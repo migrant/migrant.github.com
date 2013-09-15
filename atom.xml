@@ -4,7 +4,7 @@
   <title><![CDATA[Migrant]]></title>
   <link href="http://migrant.github.io/atom.xml" rel="self"/>
   <link href="http://migrant.github.io/"/>
-  <updated>2013-09-15T19:06:51+08:00</updated>
+  <updated>2013-09-15T19:28:23+08:00</updated>
   <id>http://migrant.github.io/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
@@ -47,7 +47,7 @@
 
 <h2>Markdown</h2>
 
-<p>在Octopress上写博客用的是 <a href="http:/s/zh.wikipedia.org/wiki/Markdown"><strong>Markdown</strong></a>。虽然Markdown已经足够轻巧，但是对于接触比较少的使用者来说，想达到纯熟使用的境界还是需要一些时间。在使用过程中除了标准Markdown，Github和Octopress还支持一些额外的语法。以下给出文档地址:</p>
+<p>在Octopress上写博客用的是 <a href="http://zh.wikipedia.org/wiki/Markdown"><strong>Markdown</strong></a>。虽然Markdown已经足够轻巧，但是对于接触比较少的使用者来说，想达到纯熟使用的境界还是需要一些时间。在使用过程中除了标准Markdown，Github和Octopress还支持一些额外的语法。以下给出文档地址:</p>
 
 <ul>
 <li><a href="http://wowubuntu.com/markdown/">Markdown 语法说明 (简体中文版)</a></li>
