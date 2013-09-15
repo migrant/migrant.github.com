@@ -28,7 +28,7 @@ Octopress默认的主题简洁明快，基本可以满足需求，网上很多�
 
 ##Markdown
 
-在Octopress上写博客用的是 [**Markdown**](http:/s/zh.wikipedia.org/wiki/Markdown)。虽然Markdown已经足够轻巧，但是对于接触比较少的使用者来说，想达到纯熟使用的境界还是需要一些时间。在使用过程中除了标准Markdown，Github和Octopress还支持一些额外的语法。以下给出文档地址:
+在Octopress上写博客用的是 [**Markdown**](http://zh.wikipedia.org/wiki/Markdown)。虽然Markdown已经足够轻巧，但是对于接触比较少的使用者来说，想达到纯熟使用的境界还是需要一些时间。在使用过程中除了标准Markdown，Github和Octopress还支持一些额外的语法。以下给出文档地址:
 
 * [Markdown 语法说明 (简体中文版)](http://wowubuntu.com/markdown/)
 * [GitHub Flavored Markdown](https://help.github.com/articles/github-flavored-markdown)
