@@ -1,26 +1,93 @@
-<?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Migrant]]></title>
-  <link href="http://migrant.github.io/atom.xml" rel="self"/>
-  <link href="http://migrant.github.io/"/>
-  <updated>2013-12-03T17:17:03+08:00</updated>
-  <id>http://migrant.github.io/</id>
-  <author>
-    <name><![CDATA[Migrant]]></name>
-    <email><![CDATA[tomigrant@gmail.com]]></email>
-  </author>
-  <generator uri="http://octopress.org/">Octopress</generator>
+<!DOCTYPE HTML>
 
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>在iOS中创建静态库 - Migrant</title>
+	<meta name="author" content="Migrant">
+
+	
+	<meta name="description" content="在iOS中创建静态库 本文由 Migrant 翻译自 Creating a Static Library in iOS Tutorial，转载请注明出处。 如果你作为iOS开发者已经有一段时间，可能会有一套属于自己的类和工具函数，它们在你的大多数项目中被重用。 重用代码的最简单方法是简单的 拷贝 &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="Migrant" type="application/atom+xml">
+	
+	<link rel="canonical" href="http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<link href="/stylesheets/font-awesome.min.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		$(function(){
+			$('.profilepic').append("<img src='http://www.gravatar.com/avatar/" + MD5("tomigrant@gmail.com") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+		});
+	</script>
+</div>
+<hgroup>
+  <h1><a href="/">Migrant</a></h1>
   
-  <entry>
-    <title type="html"><![CDATA[在iOS中创建静态库]]></title>
-    <link href="http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/"/>
-    <updated>2013-11-30T22:45:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial</id>
-    <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial">Creating a Static Library in iOS Tutorial</a>，转载请注明出处。</p>
+    <h2>橱窗里的荷兰赌徒</h2>
+  
+</hgroup>
 
-<p><img class="right" src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-00.jpg" title="Create a static library in iOS!" ></p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+	<h1 class="title" itemprop="name">在iOS中创建静态库</h1>
+	<div class="entry-content" itemprop="articleBody"><p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial">Creating a Static Library in iOS Tutorial</a>，转载请注明出处。</p>
+
+<p><img class="right" src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-00.jpg" title="Create a static library in iOS!" ></p>
 
 <p>如果你作为iOS开发者已经有一段时间，可能会有一套属于自己的类和工具函数，它们在你的大多数项目中被重用。</p>
 
@@ -57,11 +124,11 @@
 
 <p>运行Xcode，选择<code>File\New\Project</code>，在<code>Choose a template</code> 对话框中选择<code>iOS\Framework &amp; Library\Cocoa Touch Static Library</code>,如下图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-01.png" title="New Lib" alt="New Lib" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-01.png" title="New Lib" alt="New Lib" /></p>
 
 <p>点击<code>Next</code>。在工程选项对话框中，输入<code>ImageFilters</code>作为产品名。再输入一个唯一的公司标识，确保<code>Use Automatic Reference Counting</code>被选中且<code>Include Unit Tests</code>未选中。如下图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-02.png" title="Lib Name" alt="Lib Name" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-02.png" title="Lib Name" alt="Lib Name" /></p>
 
 <p>点击<code>Next</code>。最后，选择你想保存工程的位置并点击<code>Create</code>。</p>
 
@@ -264,11 +331,11 @@
 
 <p>静态库的后缀名是<code>.a</code>而并不是一个<code>.app</code>或者<code>.ipa</code>文件。可以在工程导航栏中的<code>Products</code>文件夹下找到生成的静态库。右键点击<code>libImageFilters.a</code>并在弹出菜单中选择<code>Show in Finder</code>。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-03.png" title="Show in Finder" alt="Show in Finder" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-03.png" title="Show in Finder" alt="Show in Finder" /></p>
 
 <p>Xcode会在Finder中打开文件夹，你可以看到以下类似的结构:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-04.png" title="Lib Structure" alt="Lib Structure" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-04.png" title="Lib Structure" alt="Lib Structure" /></p>
 
 <p>离完成一个库产品还剩两件事:</p>
 
@@ -294,7 +361,7 @@
 
 <p>为了创建通用二进制库，需要使用一个名为<a href="https://developer.apple.com/library/mac/documentation/darwin/reference/manpages/man1/lipo.1.html">lipo</a>的系统工具。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-05.jpg" title="Lipo Cat" alt="Lipo Cat" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-05.jpg" title="Lipo Cat" alt="Lipo Cat" /></p>
 
 <p>别担心宝贝，不是那种lipo! :] (lipo有脂肪的意思 &mdash; 译者注)</p>
 
@@ -302,17 +369,17 @@
 
 <p>Xcode中一个集合目标可以一次构建多个目标，包括命令行脚本。在Xcode菜单中选择<code>File/New/Target</code>，选择<code>iOS/Other</code>并点击<code>Aggregate</code>，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-06.png" title="Aggregate Target" alt="Aggregate Target" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-06.png" title="Aggregate Target" alt="Aggregate Target" /></p>
 
 <p>将目标命名为<code>UniversalLib</code>，确保选中<code>ImageFilters</code>工程，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-07.png" title="Aggregate Universal" alt="Aggregate Universal" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-07.png" title="Aggregate Universal" alt="Aggregate Universal" /></p>
 
 <p>在工程导航视图中选中<code>ImageFilters</code>，然后选择<code>UniversalLib</code>目标。切换到<code>Build Phases</code>标签；在这里设置构建目标时将要执行的动作。</p>
 
 <p>点击<code>Add Build Phase</code>按钮，在弹出的菜单中选择<code>Add Run Script</code>，如下图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-08.png" title="Aggregate Phase" alt="Aggregate Phase" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-08.png" title="Aggregate Phase" alt="Aggregate Phase" /></p>
 
 <p>现在你需要设置脚本项。展开<code>Run Script</code>模块，在<code>Shell</code>行下粘贴如下代码:</p>
 
@@ -362,17 +429,17 @@
 
 <p>你的Run Script窗口应该看起来如下:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-09.png" title="Aggregate Script" alt="Aggregate Script" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-09.png" title="Aggregate Script" alt="Aggregate Script" /></p>
 
 <p>现在你已经准备好构建一个静态库的通用版本。在方案下啦菜单中选择集合目标<code>UniversalLib</code>，如下(不像截图上的&#8221;iOS Device&#8221;，你看到的可能是自己的设备名字):</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-10.png" title="Aggregate Scheme" alt="Aggregate Scheme" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-10.png" title="Aggregate Scheme" alt="Aggregate Scheme" /></p>
 
 <p>点击<code>Play</code>按钮来为集合方案构建目标。</p>
 
 <p>在<code>libImageFilters.a</code>上再次选择<code>Show in Finder</code>查看结果。将Finder切换到列视图查看文件夹层次，可以看到一个包含库的通用版本的叫做<code>Debug-Universal</code>的新文件夹(或<code>Release-Universal</code>如果你构建了发布版本)，如下图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-11.png" title="St Finder" alt="St Finder" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-11.png" title="St Finder" alt="St Finder" /></p>
 
 <p>除了这个链接到模拟器和真实设备的二进制文件，你还可以找到普通的头文件和静态库文件。</p>
 
@@ -402,7 +469,7 @@
 
 <p>在本节中，你需要下载<a href="http://cdn2.raywenderlich.com/wp-content/uploads/2013/07/CoreImageFun.staticlib.zip">starter project for this section</a>。复制压缩文件到硬盘上的任意文件夹并解压。可以看到如下的文件夹结构:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-12.png" title="Lib File Tree" alt="Lib File Tree" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-12.png" title="Lib File Tree" alt="Lib File Tree" /></p>
 
 <p>为了方便起见，.a通用库文件和头文件已经复制了一份在其中，但工程并未设置使用它们。你将从这里开始。</p>
 
@@ -410,13 +477,13 @@
 
 <p>打开工程，构建并运行你的应用，将会看到以下错误:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-13.png" title="Lib Error Include" alt="Lib Error Include" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-13.png" title="Lib Error Include" alt="Lib Error Include" /></p>
 
 <p>正如所期望的那样，应用并不知道去哪里寻找头文件。为了解决这个问题，你需要在工程中添加一个<code>Header Search Path</code>，指明头文件存放的位置。设置头文件搜索路径始终是使用静态库的第一步。</p>
 
 <p>按照下图示范，在导航栏中点击工程根节点(1)，选择<code>CoreImageFun</code>目标(2)。选择<code>Build Settings</code>(3)，在列表中找出<code>Header Search Paths</code>设置项。如果必要，可以在搜索框中输入&#8221;header search&#8221;来过滤庞大的设置列表(4)。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-14.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-14.png" title="Lib Header Search" alt="Lib Header Search" /></p>
 
 <p>双击<code>Header Search Paths</code>项，弹出一个浮动窗口，点击<code>+</code>按钮，输入:</p>
 
@@ -427,17 +494,17 @@
 
 <p>弹出窗口应该如下所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-15.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-15.png" title="Lib Header Search" alt="Lib Header Search" /></p>
 
 <p><strong>$SOURCE_ROOT</strong>是一个Xcode环境变量，指向工程根文件夹。Xcode会使用包含你工程的实际文件夹代替此变量，这意味着即使你把工程移动到其它文件夹或驱动器，它仍然可以指向最新的位置。</p>
 
 <p>在弹出窗口范围外点击鼠标使其消失，你会看到Xcode已经自动将变量转换为工程的实际位置，如图所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-16.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-16.png" title="Lib Header Search" alt="Lib Header Search" /></p>
 
 <p>构建并运行应用，看看结果是什么。呃……一些链接错误出现了:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-17.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-17.png" title="Lib Header Search" alt="Lib Header Search" /></p>
 
 <p>这看起来并不是很好，但是给了你另一个你所需要的信息。仔细看，会发现所有的编译错误全都消失了，全部被链接错误所代替。这表示Xcode找到了头文件并且用它去编译应用，但在链接阶段，Xcode无法找到<code>ImageFilter</code>类的结果代码。为什么？</p>
 
@@ -445,29 +512,29 @@
 
 <p>如下面的屏幕截图所示，回到<code>CoreImageFun</code>目标(2)的构建设置(1)。选择<code>Build Phases</code>标签(3)，展开<code>Link Binary With Libraries</code>部分(4)。最后，点击<code>+</code>按钮(5)。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-18.png" title="Lib Link" alt="Lib Link" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-18.png" title="Lib Link" alt="Lib Link" /></p>
 
 <p>在出现的窗口中，点击<code>Add Other…</code>按钮，在工程根文件夹下的<code>lib</code>子目录中找到<code>libImageFilters.a</code>库文件，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-19.png" title="Lib Link" alt="Lib Link" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-19.png" title="Lib Link" alt="Lib Link" /></p>
 
 <p>完成这些以后，你的Build Phase标签看起来如下:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-20.png" title="Lib Link" alt="Lib Link" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-20.png" title="Lib Link" alt="Lib Link" /></p>
 
 <p>最后一步是增加<code>-ObjC</code>链接标识。该链接尝试更高效的只包含需要的代码，而有时会排除静态库代码。使用该标识，库中的所有Objective-C类和类别都将被适当的加载。你可以从苹果的<a href="http://developer.apple.com/library/mac/#qa/qa1490/_index.html">Technical Q&amp;A QA1490</a>了解详细信息。</p>
 
 <p>点击<code>Build Settings</code>标签，找到<code>Other linker Flags</code>设置，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-21.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-21.png" title="OBJC Flag" alt="OBJC Flag" /></p>
 
 <p>在弹出窗口中，点击<code>+</code>按钮并输入<code>-ObjC</code>，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-22.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-22.png" title="OBJC Flag" alt="OBJC Flag" /></p>
 
 <p>最后构建并运行应用，此时应该不会得到任何构建错误信息，应用顺利展示它的光彩之处:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-23.png" title="App" alt="App" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-23.png" title="App" alt="App" /></p>
 
 <p>拖动滑块改变滤镜级别，或者点击GrayScale按钮。对图片应用滤镜的代码来自于静态库，而不是应用。</p>
 
@@ -479,13 +546,13 @@
 
 <p>复制下载的文件到任意位置，解压。可以看到以下文件夹结构:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-24.png" title="Subproject Structure" alt="Subproject Structure" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-24.png" title="Subproject Structure" alt="Subproject Structure" /></p>
 
 <p>如果学习了方法一，你可能注意到了工程的差异。这个工程里没有任何的头文件和静态库文件 &mdash; 因为根本不需要。作为替代方案，你要将你在本教程开始创建的<code>ImageFilters</code>库工程添作为依赖加到本工程中。</p>
 
 <p>在做这些之前，构建并运行应用。会看到以下错误:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-25.png" title="Lib Error Include" alt="Lib Error Include" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-25.png" title="Lib Error Include" alt="Lib Error Include" /></p>
 
 <p>如果学习过上一个方法，你已经知道如何修复这个问题。在示例工程中，你在<code>ViewController</code>类中使用了<code>ImageFilters</code>类，但并未告诉Xcode去哪里寻找头文件。Xcode会尝试寻找<code>ImageFilters.h</code>文件，但是失败了。</p>
 
@@ -493,49 +560,49 @@
 
 <p>在Finder中找到名为<code>ImageFilters.xcodeproj</code>库工程文件。拖拽它到<code>CoreImageFun</code>工程左侧的导航栏中，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-26.png" title="Subproject Drag" alt="Subproject Drag" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-26.png" title="Subproject Drag" alt="Subproject Drag" /></p>
 
 <p>完成拖放后，你的工程浏览视图应该如下图所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-27.png" title="Subproject Drag" alt="Subproject Drag" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-27.png" title="Subproject Drag" alt="Subproject Drag" /></p>
 
 <p>现在Xcode已经识别了子工程，你可以将库添加为工程依赖。这样Xcode就可以在构建主应用之前确保库为最新版本。</p>
 
 <p>点击工程文件(1)，选择<code>CoreImageFun</code>目标(2)。点击<code>Build Phases</code>标签(3)并展开<code>Target Dependencies</code>(4)，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-28.png" title="Dependencies" alt="Dependencies" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-28.png" title="Dependencies" alt="Dependencies" /></p>
 
 <p>点击<code>+</code>按钮增加一个新依赖。如下图所示，确保你从弹出窗口中选择了<code>ImageFilters</code>目标(不是<code>universalLib</code>):</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-29.png" title="Dependency" alt="Dependency" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-29.png" title="Dependency" alt="Dependency" /></p>
 
 <p>添加完成之后，依赖窗口应该如图所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-30.png" title="Dependency" alt="Dependency" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-30.png" title="Dependency" alt="Dependency" /></p>
 
 <p>最后，设置静态库工程链接到应用。展开<code>Link Binary with libraries</code>，点击<code>+</code>按钮，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-31.png" title="Subproject Link" alt="Subproject Link" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-31.png" title="Subproject Link" alt="Subproject Link" /></p>
 
 <p>选择<code>libImageFilters.a</code>，点击<code>Add</code>:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-32.png" title="Subproject Link" alt="Subproject Link" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-32.png" title="Subproject Link" alt="Subproject Link" /></p>
 
 <p>添加库之后，<code>Link Binary with Libraries</code>部分应该如图所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-33.png" title="Subproject Link" alt="Subproject Link" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-33.png" title="Subproject Link" alt="Subproject Link" /></p>
 
 <p>像方法一那样，最后一步是增加<code>-ObjC</code>链接标识。点击<code>Build Settings</code>标签，找到<code>Other linker Flags</code>设置，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-34.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-34.png" title="OBJC Flag" alt="OBJC Flag" /></p>
 
 <p>在弹出窗口中，点击<code>+</code>按钮并输入<code>-ObjC</code>，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-35.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-35.png" title="OBJC Flag" alt="OBJC Flag" /></p>
 
 <p>构建并运行应用，应该没有任何错误，应用会再一次被打开:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-36.png" title="App" alt="App" /></p>
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-36.png" title="App" alt="App" /></p>
 
 <p>拖动滑块或者点击GrayScale按钮查看图片滤镜结果。滤镜逻辑的代码完全包含在库中。</p>
 
@@ -556,58 +623,85 @@
 <p>为了强化和深入探讨你在本教程中所学到的概念，我推荐苹果的文档<a href="http://developer.apple.com/library/ios/#technotes/iOSStaticLibraries/Introduction.html">Introduction to Using Static Libraries in iOS</a>。</p>
 
 <p>希望你喜欢本教程，如果你有任何问题或评论，请在下面的讨论区中讨论。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[你好, Octopress]]></title>
-    <link href="http://migrant.github.io/blog/2013/09/15/hello-octopress/"/>
-    <updated>2013-09-15T15:27:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2013/09/15/hello-octopress</id>
-    <content type="html"><![CDATA[<p>一直想搭建一个以技术为主的个人博客，可现有的博客平台要么太丑，要么功能满足不了需求。Woredpress？对于我它显得太过繁琐笨重。不过幸好这世界上有无所不能的Github和令人爱不释手的Octopress。</p>
+</div>
 
-<p>Octopress搭建起来很傻瓜化，官方文档写的很详细。网上也有大量的教程和资料可参考。本文介绍一下我在Github上搭建Octopress以及使用其过程中所借鉴的一些资料。</p>
+</article>
 
-<!--more-->
-
-
-<h2>安装及配置</h2>
-
-<p>Octopress的安装还是很简单的，基本上跟着教程一步一步走下来就可以了。这个步骤主要参考了:</p>
-
-<ul>
-<li><a href="http://beyondvincent.com/blog/2013/08/03/108-creating-a-github-blog-using-octopress/">利用Octopress搭建一个Github博客</a></li>
-<li><a href="http://beyondvincent.com/blog/2013/07/27/107-hello-page-of-github/">你好！github页面</a></li>
-</ul>
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+	
+	
+	
+	<a class="addthis_counter addthis_pill_style"></a>
+	</div>
+  <script type="text/javascript" src="http://s7.addthis.com/js/250/addthis_widget.js#pubid="></script>
+</div>
 
 
-<h2>主题</h2>
 
-<p>Octopress默认的主题简洁明快，基本可以满足需求，网上很多使用者都使用该主题。但看的多了难免会审美疲劳，觉得不够漂亮。已经有一些开发者为Octopress提供了一定数量的主题，使用者可以在其中自由选择。虽然数量远不如Wordpress庞大，但相信会有越来越多的人加入到其中。以下两个地址集合了一些Octopress主题，安装也很简单。本博客截至到此文发表时所使用的主题是 <a href="https://github.com/shashankmehta/greyshade"><code>greyshade</code></a>:</p>
+<section id="comment">
+    <h1 class="title">Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+</div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2013 - Migrant -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
 
-<ul>
-<li><a href="http://opthemes.com/">Octopress Themes</a></li>
-<li><a href="https://github.com/imathis/octopress/wiki/3rd-Party-Octopress-Themes">3rd Party Octopress Themes</a></li>
-</ul>
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
 
 
-<h2>Markdown</h2>
+<script type="text/javascript">
+      var disqus_shortname = 'migrant';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/';
+        var disqus_url = 'http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
 
-<p>在Octopress上写博客用的是 <a href="http://zh.wikipedia.org/wiki/Markdown"><strong>Markdown</strong></a>。虽然Markdown已经足够轻巧，但是对于接触比较少的使用者来说，想达到纯熟使用的境界还是需要一些时间。在使用过程中除了标准Markdown，Github和Octopress还支持一些额外的语法。以下给出文档地址:</p>
-
-<ul>
-<li><a href="http://wowubuntu.com/markdown/">Markdown 语法说明 (简体中文版)</a></li>
-<li><a href="https://help.github.com/articles/github-flavored-markdown">GitHub Flavored Markdown</a></li>
-<li><a href="http://octopress.org/docs/blogging/plugins/">Plugins</a></li>
-</ul>
 
 
-<p>我在Mac平台下使用的Markdown编辑器是 <a href="http://mouapp.com/">Mou</a>，很好用。</p>
+	<script type="text/javascript">
+		var _gaq = _gaq || [];
+		_gaq.push(['_setAccount', 'UA-44039159-1']);
+		_gaq.push(['_trackPageview']);
 
-<h2>总结</h2>
+		(function() {
+			var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+			ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		})();
+	</script>
 
-<p>基本上有了以上介绍的资料作为参考，就可以顺利的搭建起一个属于自己的博客了。</p>
-]]></content>
-  </entry>
-  
-</feed>
+
+
+
+
+
+
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>

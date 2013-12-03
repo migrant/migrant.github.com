@@ -1,0 +1,485 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: 翻译 | Migrant]]></title>
+  <link href="http://migrant.github.io/blog/categories/fan-yi/atom.xml" rel="self"/>
+  <link href="http://migrant.github.io/"/>
+  <updated>2013-12-03T17:17:03+08:00</updated>
+  <id>http://migrant.github.io/</id>
+  <author>
+    <name><![CDATA[Migrant]]></name>
+    <email><![CDATA[tomigrant@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[在iOS中创建静态库]]></title>
+    <link href="http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/"/>
+    <updated>2013-11-30T22:45:00+08:00</updated>
+    <id>http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial</id>
+    <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial">Creating a Static Library in iOS Tutorial</a>，转载请注明出处。</p>
+
+<p><img class="right" src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-00.jpg" title="Create a static library in iOS!" ></p>
+
+<p>如果你作为iOS开发者已经有一段时间，可能会有一套属于自己的类和工具函数，它们在你的大多数项目中被重用。</p>
+
+<p>重用代码的最简单方法是简单的 <em>拷贝/粘贴</em> 源文件。然而，这种方法很快就会成为维护时的噩梦。因为每个app都有自己的一份代码副本,你很难在修复bug或者升级时保证所有副本的同步。</p>
+
+<p>这就是静态库要拯救你的。一个静态库是若干个类,函数,定义和资源的包装，你可以将其打包并很容易的在项目之间共享。</p>
+
+<p>在本教程中，你将用两种方法亲手创建你自己的通用静态库。</p>
+
+<!--more-->
+
+
+<p>为了获得最佳效果，你应该熟悉Objective-C和iOS编程。Core Image的相关知识并不是必须的，但是如果你对示例工程和滤镜代码如何工作感兴趣，了解它会有所帮助。</p>
+
+<p>准备好以效率的名义减少，重用并再生你的代码!</p>
+
+<h2>为什么使用静态库</h2>
+
+<p>创建静态库可能出于以下几个理由:</p>
+
+<ul>
+<li>你想将一些你和你团队中的同事们经常使用的类打包并轻松的分享给周围其他人。</li>
+<li>你想让一些通用代码处于自己的掌控之下，以便于修复和升级。</li>
+<li>你想将库共享给其他人，但不想让他们看到你的源代码。</li>
+<li>你想创建一个还在不断开发的库的快照版本。</li>
+</ul>
+
+
+<p>本教程假设你已经完成学习<a href="http://www.raywenderlich.com/22167/beginning-core-image-in-ios-6">Core Image Tutorial</a>，并对其中展示如何应用图片特效的代码得心应手。</p>
+
+<p>将上述代码添加到一个静态库中，然后在一个app的修改版本中使用这个静态库。我们会得到一个带有上面列表中全部好处的完全相同的应用。</p>
+
+<h2>开始</h2>
+
+<p>运行Xcode，选择<code>File\New\Project</code>，在<code>Choose a template</code> 对话框中选择<code>iOS\Framework &amp; Library\Cocoa Touch Static Library</code>,如下图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-01.png" title="New Lib" alt="New Lib" /></p>
+
+<p>点击<code>Next</code>。在工程选项对话框中，输入<code>ImageFilters</code>作为产品名。再输入一个唯一的公司标识，确保<code>Use Automatic Reference Counting</code>被选中且<code>Include Unit Tests</code>未选中。如下图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-02.png" title="Lib Name" alt="Lib Name" /></p>
+
+<p>点击<code>Next</code>。最后，选择你想保存工程的位置并点击<code>Create</code>。</p>
+
+<p>Xcode已经准备好静态库工程，甚至已经为你添加了一个<code>ImageFilters</code>类。这就是你的滤镜代码将要存放的地方。</p>
+
+<blockquote><p>注意: 你可以添加任意数量的类到静态库中或者从中删除原有的类。本教程中的代码都会写在开始就被创建好的<code>ImageFilters</code>类中。</p></blockquote>
+
+<p>你的Xcode工程还是一片空白，现在我们添加一些代码进去!</p>
+
+<h2>图片滤镜</h2>
+
+<p>该库使用UIKit，为iOS设计，所以你要做的第一件事就是在头文件中导入UIKit。打开<code>ImageFilters.h</code>，在文件顶部添加以下代码:</p>
+
+<p>```objc</p>
+
+<h1>import &lt;UIKit/UIKit.h></h1>
+
+<p>```</p>
+
+<p>接下来将以下声明部分的代码粘贴到<code>@interface ImageFilters : NSObject</code>下面</p>
+
+<p>```objc
+@property (nonatomic,readonly) UIImage *originalImage;</p>
+
+<ul>
+<li>(id)initWithImage:(UIImage *)image;</li>
+<li>(UIImage *)grayScaleImage;</li>
+<li>(UIImage *)oldImageWithIntensity:(CGFloat)level;
+```</li>
+</ul>
+
+
+<p>这些头文件中的声明定义了类的公开接口。其他开发者(包括你自己)使用该库时，只需通过阅读该头文件就可以知道类名和暴露的方法。</p>
+
+<p>现在增加实现。打开<code>ImageFilters.m</code>文件，粘贴以下代码到<code>#import "ImageFilters.h"</code>下面:</p>
+
+<p>```objc
+@interface ImageFilters()</p>
+
+<p>@property (nonatomic,strong) CIContext  <em>context;
+@property (nonatomic,strong) CIImage    </em>beginImage;</p>
+
+<p>@end
+```</p>
+
+<p>上面的代码声明了一些内部使用的属性。它们不是公开的，所以使用该库的引用没有使用它们的入口。</p>
+
+<p>最后，你需要实现方法。粘贴以下代码到<code>@implementation ImageFilters:</code>下面:</p>
+
+<p>```objc
+&ndash; (id)initWithImage:(UIImage *)image
+{</p>
+
+<pre><code>self = [super init];
+if (self) {
+    _originalImage  = image;
+    _context        = [CIContext contextWithOptions:nil];
+    _beginImage     = [[CIImage alloc] initWithImage:_originalImage];
+}
+return self;
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li><p>(UIImage<em>)imageWithCIImage:(CIImage </em>)ciImage
+{
+  CGImageRef cgiImage = [self.context createCGImage:ciImage fromRect:ciImage.extent];
+  UIImage *image = [UIImage imageWithCGImage:cgiImage];
+  CGImageRelease(cgiImage);</p>
+
+<p>  return image;
+}</p></li>
+<li><p>(UIImage *)grayScaleImage
+{
+  if( !self.originalImage)
+      return nil;</p>
+
+<p>  CIImage *grayScaleFilter = [CIFilter filterWithName:@&ldquo;CIColorControls&rdquo; keysAndValues:kCIInputImageKey, self.beginImage, @&ldquo;inputBrightness&rdquo;, [NSNumber numberWithFloat:0.0], @&ldquo;inputContrast&rdquo;, [NSNumber numberWithFloat:1.1], @&ldquo;inputSaturation&rdquo;, [NSNumber numberWithFloat:0.0], nil].outputImage;</p>
+
+<p>  CIImage *output = [CIFilter filterWithName:@&ldquo;CIExposureAdjust&rdquo; keysAndValues:kCIInputImageKey, grayScaleFilter, @&ldquo;inputEV&rdquo;, [NSNumber numberWithFloat:0.7], nil].outputImage;</p>
+
+<p>  UIImage *filteredImage = [self imageWithCIImage:output];
+  return filteredImage;
+}</p></li>
+<li><p>(UIImage *)oldImageWithIntensity:(CGFloat)intensity
+{
+  if( !self.originalImage )
+      return nil;</p>
+
+<p>  CIFilter *sepia = [CIFilter filterWithName:@&ldquo;CISepiaTone&rdquo;];
+  [sepia setValue:self.beginImage forKey:kCIInputImageKey];
+  [sepia setValue:@(intensity) forKey:@&ldquo;inputIntensity&rdquo;];</p>
+
+<p>  CIFilter *random = [CIFilter filterWithName:@&ldquo;CIRandomGenerator&rdquo;];</p>
+
+<p>  CIFilter *lighten = [CIFilter filterWithName:@&ldquo;CIColorControls&rdquo;];
+  [lighten setValue:random.outputImage forKey:kCIInputImageKey];
+  [lighten setValue:@(1 &ndash; intensity) forKey:@&ldquo;inputBrightness&rdquo;];
+  [lighten setValue:@0.0 forKey:@&ldquo;inputSaturation&rdquo;];</p>
+
+<p>  CIImage *croppedImage = [lighten.outputImage imageByCroppingToRect:[self.beginImage extent]];</p>
+
+<p>  CIFilter *composite = [CIFilter filterWithName:@&ldquo;CIHardLightBlendMode&rdquo;];
+  [composite setValue:sepia.outputImage forKey:kCIInputImageKey];
+  [composite setValue:croppedImage forKey:kCIInputBackgroundImageKey];</p>
+
+<p>  CIFilter *vignette = [CIFilter filterWithName:@&ldquo;CIVignette&rdquo;];
+  [vignette setValue:composite.outputImage forKey:kCIInputImageKey];
+  [vignette setValue:@(intensity * 2) forKey:@&ldquo;inputIntensity&rdquo;];
+  [vignette setValue:@(intensity * 30) forKey:@&ldquo;inputRadius&rdquo;];</p>
+
+<p>  UIImage *filteredImage = [self imageWithCIImage:vignette.outputImage];</p>
+
+<p>  return filteredImage;
+}
+```</p></li>
+</ul>
+
+
+<p>这段代码实现了初始化和图片滤镜功能。详细解释上述代码的功能已经超出了本教程的范围，你可以从<a href="http://www.raywenderlich.com/22167/beginning-core-image-in-ios-6">Core Image Tutorial</a>中了解到更多的关于 Core Image 和滤镜的知识。</p>
+
+<p>到这里，你已经有了一个静态库，它有一个暴露了以下3个方法的公开类<code>ImageFilters</code>:</p>
+
+<ul>
+<li><code>initWithImage</code> : 初始化滤镜类</li>
+<li><code>grayScaleImage</code> : 创建灰阶图片</li>
+<li><code>oldImageWithIntensity</code> : 创建怀旧效果的图片</li>
+</ul>
+
+
+<p>现在构建并运行你的库。你会注意到Xcode的"Run"按钮只是执行了一次构建，而并不能真正的运行库去查看效果，因为并没有真正的app。</p>
+
+<p>静态库的后缀名是<code>.a</code>而并不是一个<code>.app</code>或者<code>.ipa</code>文件。可以在工程导航栏中的<code>Products</code>文件夹下找到生成的静态库。右键点击<code>libImageFilters.a</code>并在弹出菜单中选择<code>Show in Finder</code>。</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-03.png" title="Show in Finder" alt="Show in Finder" /></p>
+
+<p>Xcode会在Finder中打开文件夹，你可以看到以下类似的结构:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-04.png" title="Lib Structure" alt="Lib Structure" /></p>
+
+<p>离完成一个库产品还剩两件事:</p>
+
+<ul>
+<li><strong>Header files</strong> : 在<code>include</code>文件夹中可以找到库的所有公开头文件。在该示例中，只有一个公开类所以文件夹中只有一个<code>ImageFilters.h</code>文件。稍后你会在你的app工程中用到这个头文件以便于Xcode在编译期识别暴露的类。</li>
+<li><strong>Binary Libraty</strong> : Xcode生成的静态库是<code>ImageFilters.a</code>。想在应用中使用该库，你需要用该文件链接。</li>
+</ul>
+
+
+<p>这两个部分和你想在应用里包含一些新的框架时所需要做的事很相似，简单的导入框架头文件并建立链接。</p>
+
+<p>库已经准备就绪，需要附加说明的是，默认情况下，库文件只会为当前的架构构建。如果你在模拟器下构建，那么库会包含对应i386架构的结果代码；如果在真机设备下构建，你将会得到对应ARM架构的代码。你可能需要构建两个版本的库，并且当从模拟器切换到设备的时候选择其中一个使用。</p>
+
+<p>怎么办？</p>
+
+<p>幸运的是，有一个更好的办法可以不建立多个配置或在工程中构建产品就可以支持多个平台。你可以创建一个对应 <em>2个</em> 架构的包含结果代码的<code>universal binary</code>。</p>
+
+<h2>通用二进制</h2>
+
+<p>通用二进制是一种特殊的二进制文件，它包含对应多个架构的结果代码。你可能在从PowerPC(PPC)到Inter(i386)的Mac电脑产品线的过渡中对其有所熟悉。在这个过程中，Mac应用程序通常迁移为包含 <em>2个</em> 可执行包的一个二进制文件，这样应用程序即能在Inter也能在PowerPC的Mac电脑上运行。</p>
+
+<p>同时支持ARM和i386的概念并没有太大不同。在这里静态库要包含支持iOS设备(ARM)和模拟器(i386)的结果代码。Xcode可以识别通用库，每次你构建应用的时候，它会根据目标选择适当的架构。</p>
+
+<p>为了创建通用二进制库，需要使用一个名为<a href="https://developer.apple.com/library/mac/documentation/darwin/reference/manpages/man1/lipo.1.html">lipo</a>的系统工具。</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-05.jpg" title="Lipo Cat" alt="Lipo Cat" /></p>
+
+<p>别担心宝贝，不是那种lipo! :] (lipo有脂肪的意思 &mdash; 译者注)</p>
+
+<p><strong>lipo</strong>是一个命令行工具，它允许在通用文件上执行操作(类似于创建通用二进制, 列出通用文件内容等等)。本教程中使用<strong>lipo</strong>的目的是联合不同架构的二进制文件到单个输出文件中。你可以直接在命令行中使用<strong>lipo</strong>命令，但在本教程中你可以让Xcode执行一段创建通用库的命令行脚本来为你做这件事。</p>
+
+<p>Xcode中一个集合目标可以一次构建多个目标，包括命令行脚本。在Xcode菜单中选择<code>File/New/Target</code>，选择<code>iOS/Other</code>并点击<code>Aggregate</code>，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-06.png" title="Aggregate Target" alt="Aggregate Target" /></p>
+
+<p>将目标命名为<code>UniversalLib</code>，确保选中<code>ImageFilters</code>工程，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-07.png" title="Aggregate Universal" alt="Aggregate Universal" /></p>
+
+<p>在工程导航视图中选中<code>ImageFilters</code>，然后选择<code>UniversalLib</code>目标。切换到<code>Build Phases</code>标签；在这里设置构建目标时将要执行的动作。</p>
+
+<p>点击<code>Add Build Phase</code>按钮，在弹出的菜单中选择<code>Add Run Script</code>，如下图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-08.png" title="Aggregate Phase" alt="Aggregate Phase" /></p>
+
+<p>现在你需要设置脚本项。展开<code>Run Script</code>模块，在<code>Shell</code>行下粘贴如下代码:</p>
+
+<p>```sh</p>
+
+<h1>define output folder environment variable</h1>
+
+<p>UNIVERSAL_OUTPUTFOLDER=${BUILD_DIR}/${CONFIGURATION}-universal</p>
+
+<h1>Step 1. Build Device and Simulator versions</h1>
+
+<p>xcodebuild -target ImageFilters ONLY_ACTIVE_ARCH=NO -configuration ${CONFIGURATION} -sdk iphoneos  BUILD_DIR=&ldquo;${BUILD_DIR}&rdquo; BUILD_ROOT=&ldquo;${BUILD_ROOT}&rdquo;
+xcodebuild -target ImageFilters -configuration ${CONFIGURATION} -sdk iphonesimulator -arch i386 BUILD_DIR=&ldquo;${BUILD_DIR}&rdquo; BUILD_ROOT=&ldquo;${BUILD_ROOT}&rdquo;</p>
+
+<h1>make sure the output directory exists</h1>
+
+<p>mkdir -p &ldquo;${UNIVERSAL_OUTPUTFOLDER}&rdquo;</p>
+
+<h1>Step 2. Create universal binary file using lipo</h1>
+
+<p>lipo -create -output &ldquo;${UNIVERSAL_OUTPUTFOLDER}/lib${PROJECT_NAME}.a&rdquo; &ldquo;${BUILD_DIR}/${CONFIGURATION}-iphoneos/lib${PROJECT_NAME}.a&rdquo; &ldquo;${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/lib${PROJECT_NAME}.a&rdquo;</p>
+
+<h1>Last touch. copy the header files. Just for convenience</h1>
+
+<p>cp -R &ldquo;${BUILD_DIR}/${CONFIGURATION}-iphoneos/include&rdquo; &ldquo;${UNIVERSAL_OUTPUTFOLDER}/&rdquo;
+```</p>
+
+<p>代码并不十分复杂，它是这样工作的:</p>
+
+<ul>
+<li><strong>UNIVERSAL_OUTPUTFOLDER</strong> 包括了通用二进制包将要被存放的文件夹:&ldquo;Debug-universal&rdquo;</li>
+<li><strong>Step 1.</strong> 第2行执行了<code>xcodebuild</code>并命令它构建ARM架构的二进制文件。(你可以看到这行中的<code>-sdk iphoneos</code>参数)</li>
+<li>下一行再次执行了<code>xcodebuild</code>命令并在另一个文件夹中构建了一个针对Inter架构的iPhone模拟器的二进制文件，在这里关键参数是<code>-sdk iphonesimulator -arch i386</code>。(如果感兴趣，你可以在<a href="http://developer.apple.com/documentation/Darwin/Reference/ManPages/man1/xcodebuild.1.html">man page</a>了解更多关于xcodebuild的资料)</li>
+<li><strong>Step 2.</strong> 现在已经有了2个.a文件分别对应两个架构。执行<code>lipo -create</code>，用它们创建出一个通用二进制。</li>
+<li>最后一行的作用是复制头文件到通用构建文件夹的外层。(用<code>cp</code>命令)</li>
+</ul>
+
+
+<p>你的Run Script窗口应该看起来如下:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-09.png" title="Aggregate Script" alt="Aggregate Script" /></p>
+
+<p>现在你已经准备好构建一个静态库的通用版本。在方案下啦菜单中选择集合目标<code>UniversalLib</code>，如下(不像截图上的"iOS Device"，你看到的可能是自己的设备名字):</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-10.png" title="Aggregate Scheme" alt="Aggregate Scheme" /></p>
+
+<p>点击<code>Play</code>按钮来为集合方案构建目标。</p>
+
+<p>在<code>libImageFilters.a</code>上再次选择<code>Show in Finder</code>查看结果。将Finder切换到列视图查看文件夹层次，可以看到一个包含库的通用版本的叫做<code>Debug-Universal</code>的新文件夹(或<code>Release-Universal</code>如果你构建了发布版本)，如下图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-11.png" title="St Finder" alt="St Finder" /></p>
+
+<p>除了这个链接到模拟器和真实设备的二进制文件，你还可以找到普通的头文件和静态库文件。</p>
+
+<p>这是你创建自己的通用静态库所需要学习的所有知识。</p>
+
+<p>概括起来，一个静态库工程和一个应用工程非常相似。可以拥有一个或多个类，最后的产品是头文件和一个.a文件。这个.a文件就是可以链接到多个应用程序中的静态库。</p>
+
+<h2>在应用中使用静态库</h2>
+
+<p>在应用中使用<code>ImageFilters</code>类和直接使用源代码并没有太大区别:导入头文件然后开始使用类。问题是Xcode并不知道头文件和库文件的位置。</p>
+
+<p>有两种办法可以将静态库引入到工程中:</p>
+
+<ul>
+<li><strong>方法 1:</strong> 直接引用头文件和库二进制文件(.a)</li>
+<li><strong>方法 2:</strong> 将库工程作为子项目</li>
+</ul>
+
+
+<p>选择哪一种方法完全取决于你的喜好或者是否有静态库的源代码和工程配置文件任由你支配。</p>
+
+<p>本教程将分别介绍两种方法。你可以自由尝试第一个或第二个，但推荐按照文中介绍的顺序分别尝试两个。在两个部分的开头，需要一个zip文件，该文件是在<a href="http://www.raywenderlich.com/22167/beginning-core-image-in-ios-6">Core Image Tutorial</a>中创建的应用的修改版本，修改后的版本使用了库中新的<code>ImageFilters</code>类。</p>
+
+<p>本教程的主要目的是教你如何使用静态库，所以修改后的工程包括了所有应用需要的源代码。这样你就可以将注意力集中在使用库所需要的工程设置上。</p>
+
+<h2>方法 1: 头文件和库二进制文件</h2>
+
+<p>在本节中，你需要下载<a href="http://cdn2.raywenderlich.com/wp-content/uploads/2013/07/CoreImageFun.staticlib.zip">starter project for this section</a>。复制压缩文件到硬盘上的任意文件夹并解压。可以看到如下的文件夹结构:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-12.png" title="Lib File Tree" alt="Lib File Tree" /></p>
+
+<p>为了方便起见，.a通用库文件和头文件已经复制了一份在其中，但工程并未设置使用它们。你将从这里开始。</p>
+
+<blockquote><p>注意: 标准的Unix引入惯例是一个<code>include</code>文件夹，用来存放头文件，一个<code>lib</code>文件夹用来存放库文件(.a)。这种文件夹结构这是一种惯例，并不强制。你并不需要一定遵从这种结构或者复制文件到工程文件夹中。在你自己的应用中，你可以任意选择头文件和库文件的位置，只要随后在Xcode工程中设置了适当的路径。</p></blockquote>
+
+<p>打开工程，构建并运行你的应用，将会看到以下错误:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-13.png" title="Lib Error Include" alt="Lib Error Include" /></p>
+
+<p>正如所期望的那样，应用并不知道去哪里寻找头文件。为了解决这个问题，你需要在工程中添加一个<code>Header Search Path</code>，指明头文件存放的位置。设置头文件搜索路径始终是使用静态库的第一步。</p>
+
+<p>按照下图示范，在导航栏中点击工程根节点(1)，选择<code>CoreImageFun</code>目标(2)。选择<code>Build Settings</code>(3)，在列表中找出<code>Header Search Paths</code>设置项。如果必要，可以在搜索框中输入"header search"来过滤庞大的设置列表(4)。</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-14.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+
+<p>双击<code>Header Search Paths</code>项，弹出一个浮动窗口，点击<code>+</code>按钮，输入:</p>
+
+<p><code>
+$SOURCE_ROOT/include
+</code></p>
+
+<p>弹出窗口应该如下所示:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-15.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+
+<p><strong>$SOURCE_ROOT</strong>是一个Xcode环境变量，指向工程根文件夹。Xcode会使用包含你工程的实际文件夹代替此变量，这意味着即使你把工程移动到其它文件夹或驱动器，它仍然可以指向最新的位置。</p>
+
+<p>在弹出窗口范围外点击鼠标使其消失，你会看到Xcode已经自动将变量转换为工程的实际位置，如图所示:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-16.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+
+<p>构建并运行应用，看看结果是什么。呃……一些链接错误出现了:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-17.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+
+<p>这看起来并不是很好，但是给了你另一个你所需要的信息。仔细看，会发现所有的编译错误全都消失了，全部被链接错误所代替。这表示Xcode找到了头文件并且用它去编译应用，但在链接阶段，Xcode无法找到<code>ImageFilter</code>类的结果代码。为什么？</p>
+
+<p>很简单 &mdash; 你还没有告诉Xcode去哪里寻找包含类实现的库文件。(看，没什么大不了)</p>
+
+<p>如下面的屏幕截图所示，回到<code>CoreImageFun</code>目标(2)的构建设置(1)。选择<code>Build Phases</code>标签(3)，展开<code>Link Binary With Libraries</code>部分(4)。最后，点击<code>+</code>按钮(5)。</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-18.png" title="Lib Link" alt="Lib Link" /></p>
+
+<p>在出现的窗口中，点击<code>Add Other…</code>按钮，在工程根文件夹下的<code>lib</code>子目录中找到<code>libImageFilters.a</code>库文件，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-19.png" title="Lib Link" alt="Lib Link" /></p>
+
+<p>完成这些以后，你的Build Phase标签看起来如下:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-20.png" title="Lib Link" alt="Lib Link" /></p>
+
+<p>最后一步是增加<code>-ObjC</code>链接标识。该链接尝试更高效的只包含需要的代码，而有时会排除静态库代码。使用该标识，库中的所有Objective-C类和类别都将被适当的加载。你可以从苹果的<a href="http://developer.apple.com/library/mac/#qa/qa1490/_index.html">Technical Q&amp;A QA1490</a>了解详细信息。</p>
+
+<p>点击<code>Build Settings</code>标签，找到<code>Other linker Flags</code>设置，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-21.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+
+<p>在弹出窗口中，点击<code>+</code>按钮并输入<code>-ObjC</code>，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-22.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+
+<p>最后构建并运行应用，此时应该不会得到任何构建错误信息，应用顺利展示它的光彩之处:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-23.png" title="App" alt="App" /></p>
+
+<p>拖动滑块改变滤镜级别，或者点击GrayScale按钮。对图片应用滤镜的代码来自于静态库，而不是应用。</p>
+
+<p>恭喜 &mdash; 你已经构建了你的第一个静态库并在一个真正的应用里使用它!你会发现这种包含头文件和库的方法在很多第三方库中使用，如AdMob，TestFlight或一些不提供源代码的商业库。</p>
+
+<h2>方法 2: 子项目</h2>
+
+<p>在这部分，请在<a href="http://cdn1.raywenderlich.com/wp-content/uploads/2013/07/CoreImageFun.subproject.zip">这里</a>下载所需工程。</p>
+
+<p>复制下载的文件到任意位置，解压。可以看到以下文件夹结构:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-24.png" title="Subproject Structure" alt="Subproject Structure" /></p>
+
+<p>如果学习了方法一，你可能注意到了工程的差异。这个工程里没有任何的头文件和静态库文件 &mdash; 因为根本不需要。作为替代方案，你要将你在本教程开始创建的<code>ImageFilters</code>库工程添作为依赖加到本工程中。</p>
+
+<p>在做这些之前，构建并运行应用。会看到以下错误:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-25.png" title="Lib Error Include" alt="Lib Error Include" /></p>
+
+<p>如果学习过上一个方法，你已经知道如何修复这个问题。在示例工程中，你在<code>ViewController</code>类中使用了<code>ImageFilters</code>类，但并未告诉Xcode去哪里寻找头文件。Xcode会尝试寻找<code>ImageFilters.h</code>文件，但是失败了。</p>
+
+<p>将<code>ImageFilters</code>库工程作为子项目所需的所有操作就是拖拽库工程文件到库文件树中。如果该工程已经在另一个Xcode窗口中被打开，那么Xcode无法正确将其添加为子工程。所以在继续本教程之前，确保<code>ImageFilters</code>库工程已经被关闭。</p>
+
+<p>在Finder中找到名为<code>ImageFilters.xcodeproj</code>库工程文件。拖拽它到<code>CoreImageFun</code>工程左侧的导航栏中，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-26.png" title="Subproject Drag" alt="Subproject Drag" /></p>
+
+<p>完成拖放后，你的工程浏览视图应该如下图所示:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-27.png" title="Subproject Drag" alt="Subproject Drag" /></p>
+
+<p>现在Xcode已经识别了子工程，你可以将库添加为工程依赖。这样Xcode就可以在构建主应用之前确保库为最新版本。</p>
+
+<p>点击工程文件(1)，选择<code>CoreImageFun</code>目标(2)。点击<code>Build Phases</code>标签(3)并展开<code>Target Dependencies</code>(4)，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-28.png" title="Dependencies" alt="Dependencies" /></p>
+
+<p>点击<code>+</code>按钮增加一个新依赖。如下图所示，确保你从弹出窗口中选择了<code>ImageFilters</code>目标(不是<code>universalLib</code>):</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-29.png" title="Dependency" alt="Dependency" /></p>
+
+<p>添加完成之后，依赖窗口应该如图所示:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-30.png" title="Dependency" alt="Dependency" /></p>
+
+<p>最后，设置静态库工程链接到应用。展开<code>Link Binary with libraries</code>，点击<code>+</code>按钮，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-31.png" title="Subproject Link" alt="Subproject Link" /></p>
+
+<p>选择<code>libImageFilters.a</code>，点击<code>Add</code>:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-32.png" title="Subproject Link" alt="Subproject Link" /></p>
+
+<p>添加库之后，<code>Link Binary with Libraries</code>部分应该如图所示:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-33.png" title="Subproject Link" alt="Subproject Link" /></p>
+
+<p>像方法一那样，最后一步是增加<code>-ObjC</code>链接标识。点击<code>Build Settings</code>标签，找到<code>Other linker Flags</code>设置，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-34.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+
+<p>在弹出窗口中，点击<code>+</code>按钮并输入<code>-ObjC</code>，如图:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-35.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+
+<p>构建并运行应用，应该没有任何错误，应用会再一次被打开:</p>
+
+<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-36.png" title="App" alt="App" /></p>
+
+<p>拖动滑块或者点击GrayScale按钮查看图片滤镜结果。滤镜逻辑的代码完全包含在库中。</p>
+
+<p>如果按照第一种方法在应用中添加库(使用头文件和库文件)，你可能注意到和第二种方法的区别。在方法二中，你没有在工程设置中添加任何头文件搜索路径。另一个区别是你没有使用通用库。</p>
+
+<p>为什么会有这样的区别？当添加一个库作为一个子工程，Xcode会为你考虑几乎所有的事情。添加子工程和依赖后，Xcode知道去哪里寻找头文件和二进制文件，也知道根据你的设置去选择哪需要构建哪一个架构的库。这非常方便。</p>
+
+<p>如果你使用你自己的库或者拥有源代码和工程文件，将库作为子工程不失为一个引入静态库的简便的方法。让你更容易作为工程依赖构建整合，并担心更少的事情。</p>
+
+<h2>未来</h2>
+
+<p>你可以从<a href="http://cdn5.raywenderlich.com/wp-content/uploads/2013/07/Staticlibrary.fullsource.zip">这里</a>下载到包括了本教程所有代码的工程。</p>
+
+<p>希望本教程能够让你对静态库的基本概念和怎样在应用中使用它们有一个更深入的了解。</p>
+
+<p>下一步就是用所学到的知识构建你自己的库了。你肯定有一些添加到工程中通用类。它们是你加入你自己的可复用库的优秀候选人。你也可以考虑根据功能创建多个库:网络部分的代码作为一个，UI部分作为另一个，等等。你可以只向工程中添加所需要的代码。</p>
+
+<p>为了强化和深入探讨你在本教程中所学到的概念，我推荐苹果的文档<a href="http://developer.apple.com/library/ios/#technotes/iOSStaticLibraries/Introduction.html">Introduction to Using Static Libraries in iOS</a>。</p>
+
+<p>希望你喜欢本教程，如果你有任何问题或评论，请在下面的讨论区中讨论。</p>
+]]></content>
+  </entry>
+  
+</feed>
