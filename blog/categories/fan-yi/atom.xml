@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 翻译 | Migrant]]></title>
   <link href="http://migrant.github.io/blog/categories/fan-yi/atom.xml" rel="self"/>
   <link href="http://migrant.github.io/"/>
-  <updated>2013-12-04T10:16:33+08:00</updated>
+  <updated>2013-12-04T21:48:00+08:00</updated>
   <id>http://migrant.github.io/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
@@ -12,6 +12,210 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[理解Frame]]></title>
+    <link href="http://migrant.github.io/blog/2013/12/04/understanding-frame/"/>
+    <updated>2013-12-04T13:36:00+08:00</updated>
+    <id>http://migrant.github.io/blog/2013/12/04/understanding-frame</id>
+    <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://macoscope.com/blog/understanding-frame/">Understanding Frame</a>，转载请注明出处。</p>
+
+<p>Frame是布局的核心。每个开发者都使用frame定位和改变<code>UIView</code>和<code>CALayer</code>的大小。在本文中我将把焦点集中在<code>CALayer</code>上，因为它是<code>UIView</code>的底层实现，<code>view.frame</code>简单的返回了<code>view.layer.frame</code>。此外，我不会讨论<code>setFrame:</code>方法。虽然看起来范围十分有限，但实际上有许多有趣的事情在平凡又古老的<code>frame</code> getter方法中发生。</p>
+
+<!--more-->
+
+
+<h2>Frame依赖于什么</h2>
+
+<p>众所周知，<code>frame</code>是一个派生属性，实际上它基于一些其他的属性。实际上在计算frame值的时候会参考4个(!)属性:<code>bounds</code>，<code>anchorPoint</code>，<code>transform</code>，和<code>position</code>。</p>
+
+<p>我们从<code>bounds</code>开始。bounds很棘手，它混合了层的内部和外部。<code>bounds.size</code>定义了层本身的面积，声明了它所存在的区域。设置<code>masksToBounds</code>为<code>YES</code>会把所有子层超出bounds范围的部分裁掉。另一方面，<code>bounds</code>的<code>origin</code>属性并不影响层本身的布局；然而它会影响它内部的子层的布局方式。<code>bounds.origin</code>定义了层内部坐标系的原点。</p>
+
+<p>这里有一个例子展示了<code>bounds.origin</code>如何工作。例如我们定义<code>bounds.origin</code>为<code>CGPointMake (20.0f, 30.0f)</code></p>
+
+<p><img src="/images/posts/2013-12-04-understanding-frame-01.png" title="bounds.origin" alt="bounds.origin" /></p>
+
+<p>如何定义本地坐标系？只要把层的左上角放到<code>bounds.origin</code>上就行了。</p>
+
+<p><img src="/images/posts/2013-12-04-understanding-frame-02.png" title="bounds.origin" alt="bounds.origin" /></p>
+
+<p><code>anchorPoint</code>是一个稍微有点不同的讨厌鬼。首先，它的值标准化为0.0-1.0的范围内。获得以"点"为单位的值需要用<code>bounds.size</code>乘以标准化的值。更重要的是，<code>anchorPoint</code>定义了应用变换的坐标系的原点。</p>
+
+<p><img src="/images/posts/2013-12-04-understanding-frame-03.png" title="anchorPoint" alt="anchorPoint" /></p>
+
+<p>变换具有相同<code>bounds</code>但有不同<code>anchorPoint</code>的层(蓝色)会有很大区别(灰色)。</p>
+
+<p><code>position</code>是最简单的一个概念。它定义了经过<code>bounds.size</code>，<code>anchorPoint</code>和<code>transform</code>的混合后，添加到层中的最终位置。</p>
+
+<h2>精度的快速讨论</h2>
+
+<p>在写这篇博客的时候，我留意到有时我的计算结果和CoreAnimation返回的计算结果相比有所出入。有可能是我计算错误或者有精度问题。我理所当然的首先检查了精度问题。幸运的是我的直觉是正确的。<code>CGFloat</code>在32位架构上是一个<code>float</code>的类型定义(在64位架构上是<code>double</code>)，而似乎CoreAnimation并没有理会<code>CGFloat</code>的实际类型而在内部直接使用了<code>double</code>。</p>
+
+<p>要证实这个猜测并不困难。使用<a href="http://www.hopperapp.com/">Hooper</a>工具检查<code>CALayer</code>的<code>frame</code>getter方法的执行内容，我发现了一个叫做<code>mat4_apply_to_rect</code>的函数。然后我在这里设置了一个符号断点，实际上也就是在<code>CA::Mat4Impl::mat4_apply_to_rect(double const*, double*)</code>和<code>CA::Mat4Impl::mat4_apply_to_rect(float const*, float*)</code>上分别设置了一个断点，以确定哪一个函数被执行。当在设备上运行代码的时候，断点停在了参数是<code>double</code>的函数中，即使使用的是32位ARM架构的iPhone。</p>
+
+<p>在一些极端情况下，使用<code>float</code>和<code>double</code>的差异是显而易见的。然而因为我们的目标是对CoreAnimation进行逆向工程并得到完全相同的结果，所以我们也使用<code>double</code>。我们定义一些和CoreGraphics中相同的非常简单的结构体。</p>
+
+<p>```objc
+typedef struct MCSDoublePoint {
+  double x, y;
+} MCSDoublePoint;</p>
+
+<p>typedef struct MCSDoubleSize {
+  double width, height;
+} MCSDoubleSize;</p>
+
+<p>typedef struct MCSDoubleRect {
+  MCSDoublePoint origin;
+  MCSDoubleSize size;
+} MCSDoubleRect;
+```</p>
+
+<p>值得注意的是在64位iOS设备上，我们精心构建的<code>struct</code>会变得多余，因为在该架构上，<code>CGPoint</code>，<code>CGSize</code>和<code>CGRect</code>本来就是用<code>doubles</code>的。</p>
+
+<h2>变换</h2>
+
+<p>在深入分析frame之前，我们先了解一下变换。虽然<code>CALayer</code>使用的是一个完整的4×4的矩阵模拟<code>CATransform3D</code>，但它对计算<code>frame</code>的目的真的没有影响。所以，我们把焦点集中在<code>CGAffineTransform</code>上，它可以用每个人都喜欢的<code>CATransform3DGetAffineTransform</code>方法从<code>CATransform3D</code>中简单获得。</p>
+
+<p>让我们从点开始，使用仿射变换来变换点是入门级的袋鼠:</p>
+
+<p><code>objc
+MCSDoublePoint MCSDoublePointApplyTransform(MCSDoublePoint point, CGAffineTransform t)
+{
+  MCSDoublePoint p;
+  p.x = (double)t.a * point.x + (double)t.c * point.y + t.tx;
+  p.y = (double)t.b * point.x + (double)t.d * point.y + t.ty;
+  return p;
+}
+</code></p>
+
+<p>上面的代码实现基于<code>CGPointApplyAffineTransform</code>，从根本上来讲是一个3x3的变换矩阵乘一个三维向量。</p>
+
+<p><img src="/images/posts/2013-12-04-understanding-frame-04.gif" title="equation" alt="equation" /></p>
+
+<p>这个矩阵被<code>CGAffineTransform</code>的值填充，被乘的向量由点的x坐标，y坐标和<code>1.0</code>组成，让结果向量从矩阵中也得到转换过的元素。</p>
+
+<p>通过点变换，我们很容易变换矩形。通过变换矩形的顶点并用直线连接它们创建一个平行四边形(通常可以是任意四边形)。
+但这并不是<code>CGRectApplyAffineTransform</code>的如何工作的。这个函数接收一个<code>CGRect</code>参数并返回一个<code>CGRect</code>。正如头文件<code>CGAffineTransform.h</code>中的注释声明的:</p>
+
+<blockquote><p>通常来说因为仿射变换并不保护矩形，这个函数返回一个最小的包括经过变换的<code>rect</code>的四个顶点的矩形。</p></blockquote>
+
+<p>读过这个以后，使用double再现<code>CGRectApplyAffineTransform</code>变得相对直接:</p>
+
+<p>```objc
+MCSDoubleRect MCSDoubleRectApplyTransform(MCSDoubleRect rect, CGAffineTransform transform)
+{
+  double xMin = rect.origin.x;
+  double xMax = rect.origin.x + rect.size.width;
+  double yMin = rect.origin.y;
+  double yMax = rect.origin.y + rect.size.height;</p>
+
+<p>  MCSDoublePoint points[4] = {</p>
+
+<pre><code>[0] = MCSDoublePointApplyTransform((MCSDoublePoint){xMin, yMin}, transform),
+[1] = MCSDoublePointApplyTransform((MCSDoublePoint){xMin, yMax}, transform),
+[2] = MCSDoublePointApplyTransform((MCSDoublePoint){xMax, yMin}, transform),
+[3] = MCSDoublePointApplyTransform((MCSDoublePoint){xMax, yMax}, transform),
+</code></pre>
+
+<p>  };</p>
+
+<p>  double newXMin =  INFINITY;
+  double newXMax = -INFINITY;
+  double newYMin =  INFINITY;
+  double newYMax = -INFINITY;</p>
+
+<p>  for (int i = 0; i &lt; 4; i++) {</p>
+
+<pre><code>newXMax = MAX(newXMax, points[i].x);
+newYMax = MAX(newYMax, points[i].y);
+newXMin = MIN(newXMin, points[i].x);
+newYMin = MIN(newYMin, points[i].y);
+</code></pre>
+
+<p>  }</p>
+
+<p>  MCSDoubleRect result = {newXMin, newYMin, newXMax &ndash; newXMin, newYMax &ndash; newYMin};</p>
+
+<p>  return result;
+}
+```</p>
+
+<p>我们计算了四个顶点的坐标，变换它们并且得到<code>x</code>和<code>y</code>的极值。</p>
+
+<h2>计算Frame</h2>
+
+<p>我们付出努力去理解我们关心的每一件事，现在，获得frame会是很热闹:</p>
+
+<ul>
+<li>定义一个面积为<code>bounds.size</code>的矩形</li>
+</ul>
+
+
+<p><img src="/images/posts/2013-12-04-understanding-frame-05.png" alt="" /></p>
+
+<ul>
+<li>计算该矩形内的<code>anchorPoint</code>位置</li>
+</ul>
+
+
+<p><img src="/images/posts/2013-12-04-understanding-frame-06.png" alt="" /></p>
+
+<ul>
+<li>将矩形放入坐标系内，<code>anchorPoint</code>作为坐标系的原点</li>
+</ul>
+
+
+<p><img src="/images/posts/2013-12-04-understanding-frame-07.png" alt="" /></p>
+
+<ul>
+<li>应用任何你实施的变换，保持一个"包含了经过转换的顶点的最小矩形"</li>
+</ul>
+
+
+<p><img src="/images/posts/2013-12-04-understanding-frame-08.png" alt="" /></p>
+
+<ul>
+<li>根据<code>position</code>移动<code>anchorPoint</code></li>
+</ul>
+
+
+<p><img src="/images/posts/2013-12-04-understanding-frame-09.png" alt="" /></p>
+
+<ul>
+<li>灰色的就是结果矩形</li>
+</ul>
+
+
+<p>实现这些操作的代码如下:</p>
+
+<p>```objc
+&ndash; (CGRect)frameWithBounds:(CGRect)bounds anchorPoint:(CGPoint)anchorPoint transform:(CATransform3D)transform position:(CGPoint)position
+{
+  MCSDoubleRect rect;</p>
+
+<p>  rect.size.width = bounds.size.width;
+  rect.size.height = bounds.size.height;
+  rect.origin.x = (double)-bounds.size.width * anchorPoint.x;
+  rect.origin.y = (double)-bounds.size.height * anchorPoint.y;</p>
+
+<p>  rect = MCSDoubleRectApplyTransform(rect, CATransform3DGetAffineTransform(transform));</p>
+
+<p>  rect.origin.x += position.x;
+  rect.origin.y += position.y;</p>
+
+<p>  return CGRectMake(rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
+}
+```</p>
+
+<p>虽然代码不多，但利用了我们讨论过的所有概念。</p>
+
+<h2>这些如何映射到<code>UIView</code></h2>
+
+<p>关于<code>frame</code>getter方法，<code>bounds</code>和<code>center</code>，<code>UIView</code>并没有做什么工作；它只是简单的各自调用它底层的CALayer的<code>frame</code>，<code>bounds</code>和<code>position</code>方法。</p>
+
+<p>注意<code>center</code>到<code>position</code>的映射 &mdash; 改变底层<code>layer</code>的<code>anchorPoint</code>会使<code>center</code>不能正确的对应到层的"中心"或者层的边界矩形的"中点"。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[在iOS中创建静态库]]></title>
