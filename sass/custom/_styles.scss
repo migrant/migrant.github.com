@@ -1,2 +1,36 @@
 // This File is imported last, and will override other styles in the cascade
 // Add styles here to make changes without digging in too much
+
+article .entry-content table.data-table {
+	background: transparent;
+	margin: 10px 0 15px 0;
+	border-collapse: collapse;
+}
+
+article .entry-content table.data-table tr {
+	background: transparent;
+}
+
+article .entry-content table.data-table th {
+	background: transparent;
+	border: 1px solid #ddd;
+	padding: 5px 10px;
+}
+
+article .entry-content table.data-table td {
+	background: transparent;
+	border: 1px solid #ddd;
+	padding: 5px 10px;
+}
+
+.container .mid-col .mid-col-container #content article .entry-content table.data-table td[align="left"] {
+ 	text-align:left;
+}
+ 
+.container .mid-col .mid-col-container #content article .entry-content table.data-table td[align="right"] {
+ 	text-align:right;
+}
+ 
+.container .mid-col .mid-col-container #content article .entry-content table.data-table td[align="center"] {
+ 	text-align:center;
+}
