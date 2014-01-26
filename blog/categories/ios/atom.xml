@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iOS | Migrant]]></title>
   <link href="http://migrant.github.io/blog/categories/ios/atom.xml" rel="self"/>
   <link href="http://migrant.github.io/"/>
-  <updated>2014-01-21T18:54:33+08:00</updated>
+  <updated>2014-01-26T18:17:44+08:00</updated>
   <id>http://migrant.github.io/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
@@ -1213,7 +1213,7 @@ newYMin = MIN(newYMin, points[i].y);
 
 <h2>计算Frame</h2>
 
-<p>我们付出努力去理解我们关心的每一件事，现在，获得frame会是很热闹:</p>
+<p>我们通过努力了解了每一个影响frame的因素，现在，获得frame将会变得很有趣:</p>
 
 <ul>
 <li>定义一个面积为<code>bounds.size</code>的矩形</li>
