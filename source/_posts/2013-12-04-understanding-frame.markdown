@@ -125,7 +125,7 @@ MCSDoubleRect MCSDoubleRectApplyTransform(MCSDoubleRect rect, CGAffineTransform 
 
 ## 计算Frame
 
-我们付出努力去理解我们关心的每一件事，现在，获得frame会是很热闹:
+我们通过努力了解了每一个影响frame的因素，现在，获得frame将会变得很有趣:
 
 * 定义一个面积为`bounds.size`的矩形
 
