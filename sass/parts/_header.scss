@@ -313,12 +313,20 @@ $header-height: 30px;
 			@include border-radius(50%);
 			@include inline-block;
 			text-indent: -9999px;
-			margin: 0 15px 15px 0;
+			margin-right: 5px;
+			margin-bottom: 15px;
 			opacity: 0.5;
 			@include square(28px);
 			@include transition(0.3s);
 			&:hover{
 				opacity: 1;
+			}
+			&.weibo{
+				background: image-url('social/weibo.png') center no-repeat #e32529;
+				border: 1px solid #e32529;
+				&:hover{
+					border: 1px solid darken(#e32529, 10%);
+				}
 			}
 			&.facebook{
 				background: image-url('social/facebook.png') center no-repeat #3B5998;
