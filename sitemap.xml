@@ -19,8 +19,14 @@
         <lastmod>2014-01-21T18:36:47+08:00</lastmod>
     </url>
     <url>
+        <loc>
+            http://migrant.github.io/blog/2014/02/14/correct-way-of-defining-constants-in-objective-c/
+        </loc>
+        <lastmod>2014-02-14T11:41:49+08:00</lastmod>
+    </url>
+    <url>
         <loc>http://migrant.github.io/blog/archives/</loc>
-        <lastmod>2014-01-26T18:15:12+08:00</lastmod>
+        <lastmod>2014-02-14T11:41:49+08:00</lastmod>
     </url>
     <url>
         <loc>http://migrant.github.io/blog/categories/</loc>
@@ -28,7 +34,7 @@
     </url>
     <url>
         <loc>http://migrant.github.io/</loc>
-        <lastmod>2014-01-26T18:15:12+08:00</lastmod>
+        <lastmod>2014-02-14T11:41:49+08:00</lastmod>
     </url>
     <url>
         <loc>http://migrant.github.io/robots.txt</loc>
