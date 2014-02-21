@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Octopress | Migrant]]></title>
-  <link href="http://migrant.github.io/blog/categories/octopress/atom.xml" rel="self"/>
-  <link href="http://migrant.github.io/"/>
-  <updated>2014-02-21T10:00:57+08:00</updated>
-  <id>http://migrant.github.io/</id>
+  <link href="http://objcio.com/blog/categories/octopress/atom.xml" rel="self"/>
+  <link href="http://objcio.com/"/>
+  <updated>2014-02-21T10:02:34+08:00</updated>
+  <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
     <email><![CDATA[tomigrant@gmail.com]]></email>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[你好, Octopress]]></title>
-    <link href="http://migrant.github.io/blog/2013/09/15/hello-octopress/"/>
+    <link href="http://objcio.com/blog/2013/09/15/hello-octopress/"/>
     <updated>2013-09-15T15:27:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2013/09/15/hello-octopress</id>
+    <id>http://objcio.com/blog/2013/09/15/hello-octopress</id>
     <content type="html"><![CDATA[<p>一直想搭建一个以技术为主的个人博客，可现有的博客平台要么太丑，要么功能满足不了需求。Woredpress？对于我它显得太过繁琐笨重。不过幸好这世界上有无所不能的Github和令人爱不释手的Octopress。</p>
 
 <p>Octopress搭建起来很傻瓜化，官方文档写的很详细。网上也有大量的教程和资料可参考。本文介绍一下我在Github上搭建Octopress以及使用其过程中所借鉴的一些资料。</p>

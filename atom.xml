@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Migrant]]></title>
-  <link href="http://migrant.github.io/atom.xml" rel="self"/>
-  <link href="http://migrant.github.io/"/>
-  <updated>2014-02-21T10:00:57+08:00</updated>
-  <id>http://migrant.github.io/</id>
+  <link href="http://objcio.com/atom.xml" rel="self"/>
+  <link href="http://objcio.com/"/>
+  <updated>2014-02-21T10:02:34+08:00</updated>
+  <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
     <email><![CDATA[tomigrant@gmail.com]]></email>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[正确定义Objective-C常量]]></title>
-    <link href="http://migrant.github.io/blog/2014/02/14/correct-way-of-defining-constants-in-objective-c/"/>
+    <link href="http://objcio.com/blog/2014/02/14/correct-way-of-defining-constants-in-objective-c/"/>
     <updated>2014-02-14T11:39:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2014/02/14/correct-way-of-defining-constants-in-objective-c</id>
+    <id>http://objcio.com/blog/2014/02/14/correct-way-of-defining-constants-in-objective-c</id>
     <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://walkingsmarts.com/correct-way-of-defining-constants-in-objective-c/">Correct Way of Defining Constants in Objective-C</a>，转载请注明出处。</p>
 
 <p>本文只是一个关于如何在Cocoa代码中定义常量的书签贴，答案来自于<a href="http://stackoverflow.com/questions/538996/constants-in-objective-c">stackoverflow.com的这个问题</a>。这里为那些懒人提供了一些简短的介绍和帖子本身。你可能读遍了苹果开发者文档，知道一些特定的方法参数只能接受定义为常量的枚举值列表。比如事件类型标记(<code>NSKeyUpMask</code>，<code>NSKeyDownMask</code>，等等)，persistent store coordinator的存储类型(<code>NSSQLiteStoreType</code>，<code>NSBinaryStoreType</code>和<code>NSInMemoryStoreType</code>)，当然还有很多其他的。所有的这些归结为几行代码。实际上定义常量的时候代码行数是你想要的常量的两倍。步骤为:首先，创建<code>Constants.h</code>和<code>Constants.m</code>文件用来存放我们的常量。在<code>Constants.h</code>中，指定常量名字，将常量声明为一个指向<code>NSString</code>对象的指针:</p>
@@ -48,9 +48,9 @@
   
   <entry>
     <title type="html"><![CDATA[基础集合类]]></title>
-    <link href="http://migrant.github.io/blog/2014/01/20/the-foundation-collection-classes/"/>
+    <link href="http://objcio.com/blog/2014/01/20/the-foundation-collection-classes/"/>
     <updated>2014-01-20T17:41:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2014/01/20/the-foundation-collection-classes</id>
+    <id>http://objcio.com/blog/2014/01/20/the-foundation-collection-classes</id>
     <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://www.objc.io/issue-7/collections.html">The Foundation Collection Classes</a>，转载请注明出处。</p>
 
 <h2>NSArray, NSSet, NSOrderedSet 和 NSDictionary</h2>
@@ -66,7 +66,7 @@
 
 <p>首先，我们需要一些理论知识。效率通常用<a href="https://en.wikipedia.org/wiki/Big_O_notation">大O符号</a>描述。它定义了一个函数的 <em>极限特征</em> ，通常被用于描绘其算法效率。O定义了函数增长率的上限。通过查看通常使用的O符号和所需要的操作数来查看差异的大小。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2014-01-20-the-foundation-collection-classes-01.png" alt="" /></p>
+<p><img src="http://objcio.com/images/posts/2014-01-20-the-foundation-collection-classes-01.png" alt="" /></p>
 
 <p>例如，如果用算法复杂度为O(n<sup>2</sup>)的算法对一个有50个元素的数组排序，需要2500步的操作。而且，还有内部的系统开销和方法调用 &mdash; 所以是2500个操作的时间常量。 O(1)是理想的复杂度，代表着恒定的时间。<a href="http://en.wikipedia.org/wiki/Sorting_algorithm#Comparison_of_algorithms">好的算法通常需要O(n*log n)的时间</a>。</p>
 
@@ -680,7 +680,7 @@ Filtering/Enumeration Method / Time [ms] | 50.000 elements | 1.000.000 elements
 
 <p><code>NSMutableSet</code>有几个很强大的方法，例如<code>intersectSet:</code>，<code>minusSet:</code>和<code>unionSet:</code>。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2014-01-20-the-foundation-collection-classes-02.png" alt="" /></p>
+<p><img src="http://objcio.com/images/posts/2014-01-20-the-foundation-collection-classes-02.png" alt="" /></p>
 
 <h2>应该用setWithCapacity:吗?</h2>
 
@@ -1211,9 +1211,9 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
   
   <entry>
     <title type="html"><![CDATA[理解Frame]]></title>
-    <link href="http://migrant.github.io/blog/2013/12/04/understanding-frame/"/>
+    <link href="http://objcio.com/blog/2013/12/04/understanding-frame/"/>
     <updated>2013-12-04T13:36:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2013/12/04/understanding-frame</id>
+    <id>http://objcio.com/blog/2013/12/04/understanding-frame</id>
     <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://macoscope.com/blog/understanding-frame/">Understanding Frame</a>，转载请注明出处。</p>
 
 <p>Frame是布局的核心。每个开发者都使用frame定位和改变<code>UIView</code>和<code>CALayer</code>的大小。在本文中我将把焦点集中在<code>CALayer</code>上，因为它是<code>UIView</code>的底层实现，<code>view.frame</code>简单的返回了<code>view.layer.frame</code>。此外，我不会讨论<code>setFrame:</code>方法。虽然看起来范围十分有限，但实际上有许多有趣的事情在平凡又古老的<code>frame</code> getter方法中发生。</p>
@@ -1229,15 +1229,15 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>这里有一个例子展示了<code>bounds.origin</code>如何工作。例如我们定义<code>bounds.origin</code>为<code>CGPointMake (20.0f, 30.0f)</code></p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-12-04-understanding-frame-01.png" title="bounds.origin" alt="bounds.origin" /></p>
+<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-01.png" title="bounds.origin" alt="bounds.origin" /></p>
 
 <p>如何定义本地坐标系？只要把层的左上角放到<code>bounds.origin</code>上就行了。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-12-04-understanding-frame-02.png" title="bounds.origin" alt="bounds.origin" /></p>
+<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-02.png" title="bounds.origin" alt="bounds.origin" /></p>
 
 <p><code>anchorPoint</code>是一个稍微有点不同的讨厌鬼。首先，它的值标准化为0.0-1.0的范围内。获得以&#8221;点&#8221;为单位的值需要用<code>bounds.size</code>乘以标准化的值。更重要的是，<code>anchorPoint</code>定义了应用变换的坐标系的原点。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-12-04-understanding-frame-03.png" title="anchorPoint" alt="anchorPoint" /></p>
+<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-03.png" title="anchorPoint" alt="anchorPoint" /></p>
 
 <p>变换具有相同<code>bounds</code>但有不同<code>anchorPoint</code>的层(蓝色)会有很大区别(灰色)。</p>
 
@@ -1305,7 +1305,7 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>上面的代码实现基于<code>CGPointApplyAffineTransform</code>，从根本上来讲是一个3x3的变换矩阵乘一个三维向量。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-12-04-understanding-frame-04.gif" title="equation" alt="equation" /></p>
+<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-04.gif" title="equation" alt="equation" /></p>
 
 <p>这个矩阵被<code>CGAffineTransform</code>的值填充，被乘的向量由点的x坐标，y坐标和<code>1.0</code>组成，让结果向量从矩阵中也得到转换过的元素。</p>
 
@@ -1390,35 +1390,35 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 </ul>
 
 
-<p><img src="http://migrant.github.io/images/posts/2013-12-04-understanding-frame-05.png" alt="" /></p>
+<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-05.png" alt="" /></p>
 
 <ul>
 <li>计算该矩形内的<code>anchorPoint</code>位置</li>
 </ul>
 
 
-<p><img src="http://migrant.github.io/images/posts/2013-12-04-understanding-frame-06.png" alt="" /></p>
+<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-06.png" alt="" /></p>
 
 <ul>
 <li>将矩形放入坐标系内，<code>anchorPoint</code>作为坐标系的原点</li>
 </ul>
 
 
-<p><img src="http://migrant.github.io/images/posts/2013-12-04-understanding-frame-07.png" alt="" /></p>
+<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-07.png" alt="" /></p>
 
 <ul>
 <li>应用任何你实施的变换，保持一个&#8221;包含了经过转换的顶点的最小矩形&#8221;</li>
 </ul>
 
 
-<p><img src="http://migrant.github.io/images/posts/2013-12-04-understanding-frame-08.png" alt="" /></p>
+<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-08.png" alt="" /></p>
 
 <ul>
 <li>根据<code>position</code>移动<code>anchorPoint</code></li>
 </ul>
 
 
-<p><img src="http://migrant.github.io/images/posts/2013-12-04-understanding-frame-09.png" alt="" /></p>
+<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-09.png" alt="" /></p>
 
 <ul>
 <li>灰色的就是结果矩形</li>
@@ -1474,12 +1474,12 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
   
   <entry>
     <title type="html"><![CDATA[在iOS中创建静态库]]></title>
-    <link href="http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/"/>
+    <link href="http://objcio.com/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/"/>
     <updated>2013-11-30T22:45:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial</id>
+    <id>http://objcio.com/blog/2013/11/30/creating-a-static-library-in-ios-tutorial</id>
     <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial">Creating a Static Library in iOS Tutorial</a>，转载请注明出处。</p>
 
-<p><img class="right" src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-00.jpg" title="Create a static library in iOS!" ></p>
+<p><img class="right" src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-00.jpg" title="Create a static library in iOS!" ></p>
 
 <p>如果你作为iOS开发者已经有一段时间，可能会有一套属于自己的类和工具函数，它们在你的大多数项目中被重用。</p>
 
@@ -1516,11 +1516,11 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>运行Xcode，选择<code>File\New\Project</code>，在<code>Choose a template</code> 对话框中选择<code>iOS\Framework &amp; Library\Cocoa Touch Static Library</code>,如下图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-01.png" title="New Lib" alt="New Lib" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-01.png" title="New Lib" alt="New Lib" /></p>
 
 <p>点击<code>Next</code>。在工程选项对话框中，输入<code>ImageFilters</code>作为产品名。再输入一个唯一的公司标识，确保<code>Use Automatic Reference Counting</code>被选中且<code>Include Unit Tests</code>未选中。如下图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-02.png" title="Lib Name" alt="Lib Name" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-02.png" title="Lib Name" alt="Lib Name" /></p>
 
 <p>点击<code>Next</code>。最后，选择你想保存工程的位置并点击<code>Create</code>。</p>
 
@@ -1723,11 +1723,11 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>静态库的后缀名是<code>.a</code>而并不是一个<code>.app</code>或者<code>.ipa</code>文件。可以在工程导航栏中的<code>Products</code>文件夹下找到生成的静态库。右键点击<code>libImageFilters.a</code>并在弹出菜单中选择<code>Show in Finder</code>。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-03.png" title="Show in Finder" alt="Show in Finder" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-03.png" title="Show in Finder" alt="Show in Finder" /></p>
 
 <p>Xcode会在Finder中打开文件夹，你可以看到以下类似的结构:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-04.png" title="Lib Structure" alt="Lib Structure" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-04.png" title="Lib Structure" alt="Lib Structure" /></p>
 
 <p>离完成一个库产品还剩两件事:</p>
 
@@ -1753,7 +1753,7 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>为了创建通用二进制库，需要使用一个名为<a href="https://developer.apple.com/library/mac/documentation/darwin/reference/manpages/man1/lipo.1.html">lipo</a>的系统工具。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-05.jpg" title="Lipo Cat" alt="Lipo Cat" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-05.jpg" title="Lipo Cat" alt="Lipo Cat" /></p>
 
 <p>别担心宝贝，不是那种lipo! :] (lipo有脂肪的意思 &mdash; 译者注)</p>
 
@@ -1761,17 +1761,17 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>Xcode中一个集合目标可以一次构建多个目标，包括命令行脚本。在Xcode菜单中选择<code>File/New/Target</code>，选择<code>iOS/Other</code>并点击<code>Aggregate</code>，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-06.png" title="Aggregate Target" alt="Aggregate Target" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-06.png" title="Aggregate Target" alt="Aggregate Target" /></p>
 
 <p>将目标命名为<code>UniversalLib</code>，确保选中<code>ImageFilters</code>工程，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-07.png" title="Aggregate Universal" alt="Aggregate Universal" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-07.png" title="Aggregate Universal" alt="Aggregate Universal" /></p>
 
 <p>在工程导航视图中选中<code>ImageFilters</code>，然后选择<code>UniversalLib</code>目标。切换到<code>Build Phases</code>标签；在这里设置构建目标时将要执行的动作。</p>
 
 <p>点击<code>Add Build Phase</code>按钮，在弹出的菜单中选择<code>Add Run Script</code>，如下图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-08.png" title="Aggregate Phase" alt="Aggregate Phase" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-08.png" title="Aggregate Phase" alt="Aggregate Phase" /></p>
 
 <p>现在你需要设置脚本项。展开<code>Run Script</code>模块，在<code>Shell</code>行下粘贴如下代码:</p>
 
@@ -1821,17 +1821,17 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>你的Run Script窗口应该看起来如下:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-09.png" title="Aggregate Script" alt="Aggregate Script" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-09.png" title="Aggregate Script" alt="Aggregate Script" /></p>
 
 <p>现在你已经准备好构建一个静态库的通用版本。在方案下啦菜单中选择集合目标<code>UniversalLib</code>，如下(不像截图上的&#8221;iOS Device&#8221;，你看到的可能是自己的设备名字):</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-10.png" title="Aggregate Scheme" alt="Aggregate Scheme" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-10.png" title="Aggregate Scheme" alt="Aggregate Scheme" /></p>
 
 <p>点击<code>Play</code>按钮来为集合方案构建目标。</p>
 
 <p>在<code>libImageFilters.a</code>上再次选择<code>Show in Finder</code>查看结果。将Finder切换到列视图查看文件夹层次，可以看到一个包含库的通用版本的叫做<code>Debug-Universal</code>的新文件夹(或<code>Release-Universal</code>如果你构建了发布版本)，如下图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-11.png" title="St Finder" alt="St Finder" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-11.png" title="St Finder" alt="St Finder" /></p>
 
 <p>除了这个链接到模拟器和真实设备的二进制文件，你还可以找到普通的头文件和静态库文件。</p>
 
@@ -1861,7 +1861,7 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>在本节中，你需要下载<a href="http://cdn2.raywenderlich.com/wp-content/uploads/2013/07/CoreImageFun.staticlib.zip">starter project for this section</a>。复制压缩文件到硬盘上的任意文件夹并解压。可以看到如下的文件夹结构:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-12.png" title="Lib File Tree" alt="Lib File Tree" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-12.png" title="Lib File Tree" alt="Lib File Tree" /></p>
 
 <p>为了方便起见，.a通用库文件和头文件已经复制了一份在其中，但工程并未设置使用它们。你将从这里开始。</p>
 
@@ -1869,13 +1869,13 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>打开工程，构建并运行你的应用，将会看到以下错误:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-13.png" title="Lib Error Include" alt="Lib Error Include" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-13.png" title="Lib Error Include" alt="Lib Error Include" /></p>
 
 <p>正如所期望的那样，应用并不知道去哪里寻找头文件。为了解决这个问题，你需要在工程中添加一个<code>Header Search Path</code>，指明头文件存放的位置。设置头文件搜索路径始终是使用静态库的第一步。</p>
 
 <p>按照下图示范，在导航栏中点击工程根节点(1)，选择<code>CoreImageFun</code>目标(2)。选择<code>Build Settings</code>(3)，在列表中找出<code>Header Search Paths</code>设置项。如果必要，可以在搜索框中输入&#8221;header search&#8221;来过滤庞大的设置列表(4)。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-14.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-14.png" title="Lib Header Search" alt="Lib Header Search" /></p>
 
 <p>双击<code>Header Search Paths</code>项，弹出一个浮动窗口，点击<code>+</code>按钮，输入:</p>
 
@@ -1886,17 +1886,17 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>弹出窗口应该如下所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-15.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-15.png" title="Lib Header Search" alt="Lib Header Search" /></p>
 
 <p><strong>$SOURCE_ROOT</strong>是一个Xcode环境变量，指向工程根文件夹。Xcode会使用包含你工程的实际文件夹代替此变量，这意味着即使你把工程移动到其它文件夹或驱动器，它仍然可以指向最新的位置。</p>
 
 <p>在弹出窗口范围外点击鼠标使其消失，你会看到Xcode已经自动将变量转换为工程的实际位置，如图所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-16.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-16.png" title="Lib Header Search" alt="Lib Header Search" /></p>
 
 <p>构建并运行应用，看看结果是什么。呃……一些链接错误出现了:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-17.png" title="Lib Header Search" alt="Lib Header Search" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-17.png" title="Lib Header Search" alt="Lib Header Search" /></p>
 
 <p>这看起来并不是很好，但是给了你另一个你所需要的信息。仔细看，会发现所有的编译错误全都消失了，全部被链接错误所代替。这表示Xcode找到了头文件并且用它去编译应用，但在链接阶段，Xcode无法找到<code>ImageFilter</code>类的结果代码。为什么？</p>
 
@@ -1904,29 +1904,29 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>如下面的屏幕截图所示，回到<code>CoreImageFun</code>目标(2)的构建设置(1)。选择<code>Build Phases</code>标签(3)，展开<code>Link Binary With Libraries</code>部分(4)。最后，点击<code>+</code>按钮(5)。</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-18.png" title="Lib Link" alt="Lib Link" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-18.png" title="Lib Link" alt="Lib Link" /></p>
 
 <p>在出现的窗口中，点击<code>Add Other…</code>按钮，在工程根文件夹下的<code>lib</code>子目录中找到<code>libImageFilters.a</code>库文件，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-19.png" title="Lib Link" alt="Lib Link" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-19.png" title="Lib Link" alt="Lib Link" /></p>
 
 <p>完成这些以后，你的Build Phase标签看起来如下:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-20.png" title="Lib Link" alt="Lib Link" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-20.png" title="Lib Link" alt="Lib Link" /></p>
 
 <p>最后一步是增加<code>-ObjC</code>链接标识。该链接尝试更高效的只包含需要的代码，而有时会排除静态库代码。使用该标识，库中的所有Objective-C类和类别都将被适当的加载。你可以从苹果的<a href="http://developer.apple.com/library/mac/#qa/qa1490/_index.html">Technical Q&amp;A QA1490</a>了解详细信息。</p>
 
 <p>点击<code>Build Settings</code>标签，找到<code>Other linker Flags</code>设置，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-21.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-21.png" title="OBJC Flag" alt="OBJC Flag" /></p>
 
 <p>在弹出窗口中，点击<code>+</code>按钮并输入<code>-ObjC</code>，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-22.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-22.png" title="OBJC Flag" alt="OBJC Flag" /></p>
 
 <p>最后构建并运行应用，此时应该不会得到任何构建错误信息，应用顺利展示它的光彩之处:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-23.png" title="App" alt="App" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-23.png" title="App" alt="App" /></p>
 
 <p>拖动滑块改变滤镜级别，或者点击GrayScale按钮。对图片应用滤镜的代码来自于静态库，而不是应用。</p>
 
@@ -1938,13 +1938,13 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>复制下载的文件到任意位置，解压。可以看到以下文件夹结构:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-24.png" title="Subproject Structure" alt="Subproject Structure" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-24.png" title="Subproject Structure" alt="Subproject Structure" /></p>
 
 <p>如果学习了方法一，你可能注意到了工程的差异。这个工程里没有任何的头文件和静态库文件 &mdash; 因为根本不需要。作为替代方案，你要将你在本教程开始创建的<code>ImageFilters</code>库工程添作为依赖加到本工程中。</p>
 
 <p>在做这些之前，构建并运行应用。会看到以下错误:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-25.png" title="Lib Error Include" alt="Lib Error Include" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-25.png" title="Lib Error Include" alt="Lib Error Include" /></p>
 
 <p>如果学习过上一个方法，你已经知道如何修复这个问题。在示例工程中，你在<code>ViewController</code>类中使用了<code>ImageFilters</code>类，但并未告诉Xcode去哪里寻找头文件。Xcode会尝试寻找<code>ImageFilters.h</code>文件，但是失败了。</p>
 
@@ -1952,49 +1952,49 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
 
 <p>在Finder中找到名为<code>ImageFilters.xcodeproj</code>库工程文件。拖拽它到<code>CoreImageFun</code>工程左侧的导航栏中，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-26.png" title="Subproject Drag" alt="Subproject Drag" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-26.png" title="Subproject Drag" alt="Subproject Drag" /></p>
 
 <p>完成拖放后，你的工程浏览视图应该如下图所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-27.png" title="Subproject Drag" alt="Subproject Drag" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-27.png" title="Subproject Drag" alt="Subproject Drag" /></p>
 
 <p>现在Xcode已经识别了子工程，你可以将库添加为工程依赖。这样Xcode就可以在构建主应用之前确保库为最新版本。</p>
 
 <p>点击工程文件(1)，选择<code>CoreImageFun</code>目标(2)。点击<code>Build Phases</code>标签(3)并展开<code>Target Dependencies</code>(4)，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-28.png" title="Dependencies" alt="Dependencies" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-28.png" title="Dependencies" alt="Dependencies" /></p>
 
 <p>点击<code>+</code>按钮增加一个新依赖。如下图所示，确保你从弹出窗口中选择了<code>ImageFilters</code>目标(不是<code>universalLib</code>):</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-29.png" title="Dependency" alt="Dependency" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-29.png" title="Dependency" alt="Dependency" /></p>
 
 <p>添加完成之后，依赖窗口应该如图所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-30.png" title="Dependency" alt="Dependency" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-30.png" title="Dependency" alt="Dependency" /></p>
 
 <p>最后，设置静态库工程链接到应用。展开<code>Link Binary with libraries</code>，点击<code>+</code>按钮，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-31.png" title="Subproject Link" alt="Subproject Link" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-31.png" title="Subproject Link" alt="Subproject Link" /></p>
 
 <p>选择<code>libImageFilters.a</code>，点击<code>Add</code>:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-32.png" title="Subproject Link" alt="Subproject Link" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-32.png" title="Subproject Link" alt="Subproject Link" /></p>
 
 <p>添加库之后，<code>Link Binary with Libraries</code>部分应该如图所示:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-33.png" title="Subproject Link" alt="Subproject Link" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-33.png" title="Subproject Link" alt="Subproject Link" /></p>
 
 <p>像方法一那样，最后一步是增加<code>-ObjC</code>链接标识。点击<code>Build Settings</code>标签，找到<code>Other linker Flags</code>设置，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-34.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-34.png" title="OBJC Flag" alt="OBJC Flag" /></p>
 
 <p>在弹出窗口中，点击<code>+</code>按钮并输入<code>-ObjC</code>，如图:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-35.png" title="OBJC Flag" alt="OBJC Flag" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-35.png" title="OBJC Flag" alt="OBJC Flag" /></p>
 
 <p>构建并运行应用，应该没有任何错误，应用会再一次被打开:</p>
 
-<p><img src="http://migrant.github.io/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-36.png" title="App" alt="App" /></p>
+<p><img src="http://objcio.com/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-36.png" title="App" alt="App" /></p>
 
 <p>拖动滑块或者点击GrayScale按钮查看图片滤镜结果。滤镜逻辑的代码完全包含在库中。</p>
 
@@ -2020,9 +2020,9 @@ Class / Time [ms]           | #1.000 | #10.000 | #1.000.000 | #10.000.000 | #1.0
   
   <entry>
     <title type="html"><![CDATA[你好, Octopress]]></title>
-    <link href="http://migrant.github.io/blog/2013/09/15/hello-octopress/"/>
+    <link href="http://objcio.com/blog/2013/09/15/hello-octopress/"/>
     <updated>2013-09-15T15:27:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2013/09/15/hello-octopress</id>
+    <id>http://objcio.com/blog/2013/09/15/hello-octopress</id>
     <content type="html"><![CDATA[<p>一直想搭建一个以技术为主的个人博客，可现有的博客平台要么太丑，要么功能满足不了需求。Woredpress？对于我它显得太过繁琐笨重。不过幸好这世界上有无所不能的Github和令人爱不释手的Octopress。</p>
 
 <p>Octopress搭建起来很傻瓜化，官方文档写的很详细。网上也有大量的教程和资料可参考。本文介绍一下我在Github上搭建Octopress以及使用其过程中所借鉴的一些资料。</p>

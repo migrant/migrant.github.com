@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: objc.io | Migrant]]></title>
-  <link href="http://migrant.github.io/blog/categories/objc-dot-io/atom.xml" rel="self"/>
-  <link href="http://migrant.github.io/"/>
-  <updated>2014-02-21T10:00:57+08:00</updated>
-  <id>http://migrant.github.io/</id>
+  <link href="http://objcio.com/blog/categories/objc-dot-io/atom.xml" rel="self"/>
+  <link href="http://objcio.com/"/>
+  <updated>2014-02-21T10:02:34+08:00</updated>
+  <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
     <email><![CDATA[tomigrant@gmail.com]]></email>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[基础集合类]]></title>
-    <link href="http://migrant.github.io/blog/2014/01/20/the-foundation-collection-classes/"/>
+    <link href="http://objcio.com/blog/2014/01/20/the-foundation-collection-classes/"/>
     <updated>2014-01-20T17:41:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2014/01/20/the-foundation-collection-classes</id>
+    <id>http://objcio.com/blog/2014/01/20/the-foundation-collection-classes</id>
     <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://www.objc.io/issue-7/collections.html">The Foundation Collection Classes</a>，转载请注明出处。</p>
 
 <h2>NSArray, NSSet, NSOrderedSet 和 NSDictionary</h2>

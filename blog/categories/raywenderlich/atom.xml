@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: raywenderlich | Migrant]]></title>
-  <link href="http://migrant.github.io/blog/categories/raywenderlich/atom.xml" rel="self"/>
-  <link href="http://migrant.github.io/"/>
-  <updated>2014-02-21T10:00:57+08:00</updated>
-  <id>http://migrant.github.io/</id>
+  <link href="http://objcio.com/blog/categories/raywenderlich/atom.xml" rel="self"/>
+  <link href="http://objcio.com/"/>
+  <updated>2014-02-21T10:02:34+08:00</updated>
+  <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
     <email><![CDATA[tomigrant@gmail.com]]></email>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[在iOS中创建静态库]]></title>
-    <link href="http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/"/>
+    <link href="http://objcio.com/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/"/>
     <updated>2013-11-30T22:45:00+08:00</updated>
-    <id>http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial</id>
+    <id>http://objcio.com/blog/2013/11/30/creating-a-static-library-in-ios-tutorial</id>
     <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial">Creating a Static Library in iOS Tutorial</a>，转载请注明出处。</p>
 
 <p><img class="right" src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-00.jpg" title="Create a static library in iOS!" ></p>

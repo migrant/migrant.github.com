@@ -1,43 +1,41 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
     <url>
-        <loc>http://migrant.github.io/blog/2013/09/15/hello-octopress/</loc>
+        <loc>http://objcio.com/blog/2013/09/15/hello-octopress/</loc>
         <lastmod>2014-01-12T17:20:52+08:00</lastmod>
     </url>
     <url>
-        <loc>
-            http://migrant.github.io/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/
-        </loc>
+        <loc>http://objcio.com/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/</loc>
         <lastmod>2014-01-12T17:20:52+08:00</lastmod>
     </url>
     <url>
-        <loc>http://migrant.github.io/blog/2013/12/04/understanding-frame/</loc>
+        <loc>http://objcio.com/blog/2013/12/04/understanding-frame/</loc>
         <lastmod>2014-01-26T18:15:12+08:00</lastmod>
     </url>
     <url>
-        <loc>http://migrant.github.io/blog/2014/01/20/the-foundation-collection-classes/</loc>
+        <loc>http://objcio.com/blog/2014/01/20/the-foundation-collection-classes/</loc>
         <lastmod>2014-01-21T18:36:47+08:00</lastmod>
     </url>
     <url>
         <loc>
-            http://migrant.github.io/blog/2014/02/14/correct-way-of-defining-constants-in-objective-c/
+            http://objcio.com/blog/2014/02/14/correct-way-of-defining-constants-in-objective-c/
         </loc>
         <lastmod>2014-02-14T11:41:49+08:00</lastmod>
     </url>
     <url>
-        <loc>http://migrant.github.io/blog/archives/</loc>
+        <loc>http://objcio.com/blog/archives/</loc>
         <lastmod>2014-02-14T11:41:49+08:00</lastmod>
     </url>
     <url>
-        <loc>http://migrant.github.io/blog/categories/</loc>
+        <loc>http://objcio.com/blog/categories/</loc>
         <lastmod>2014-01-12T17:20:52+08:00</lastmod>
     </url>
     <url>
-        <loc>http://migrant.github.io/</loc>
+        <loc>http://objcio.com/</loc>
         <lastmod>2014-02-14T11:41:49+08:00</lastmod>
     </url>
     <url>
-        <loc>http://migrant.github.io/robots.txt</loc>
+        <loc>http://objcio.com/robots.txt</loc>
         <lastmod>2014-01-12T17:20:52+08:00</lastmod>
     </url>
 </urlset>

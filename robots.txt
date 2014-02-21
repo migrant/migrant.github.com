@@ -1,4 +1,4 @@
 User-agent: *
 Disallow: 
 
-Sitemap: http://migrant.github.io/sitemap.xml 
+Sitemap: http://objcio.com/sitemap.xml 
