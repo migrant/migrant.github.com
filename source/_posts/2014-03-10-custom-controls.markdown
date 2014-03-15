@@ -42,7 +42,7 @@ categories: iOS objc.io 翻译
 
 通常最快速的渲染方法是使用图片视图。例如，假设你想画一个带有边框的圆形头像，像下面图片中这样:
 
-![](/images/posts/2013-12-04-understanding-frame-05.png)
+![](/images/posts/2014-03-10-custom-controls.png)
 
 为了实现这个，我们用以下的代码创建了一个图片视图的子类:
 
