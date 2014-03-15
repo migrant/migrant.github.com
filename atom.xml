@@ -4,7 +4,7 @@
   <title><![CDATA[Migrant]]></title>
   <link href="http://objcio.com/atom.xml" rel="self"/>
   <link href="http://objcio.com/"/>
-  <updated>2014-03-15T20:37:52+08:00</updated>
+  <updated>2014-03-15T20:39:58+08:00</updated>
   <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
@@ -54,7 +54,7 @@
 
 <p>通常最快速的渲染方法是使用图片视图。例如，假设你想画一个带有边框的圆形头像，像下面图片中这样:</p>
 
-<p><img src="http://objcio.com/images/posts/2013-12-04-understanding-frame-05.png" alt="" /></p>
+<p><img src="http://objcio.com/images/posts/2014-03-10-custom-controls.png" alt="" /></p>
 
 <p>为了实现这个，我们用以下的代码创建了一个图片视图的子类:</p>
 
