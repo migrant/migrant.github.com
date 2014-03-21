@@ -4,7 +4,7 @@
   <title><![CDATA[Migrant]]></title>
   <link href="http://objcio.com/atom.xml" rel="self"/>
   <link href="http://objcio.com/"/>
-  <updated>2014-03-15T20:39:58+08:00</updated>
+  <updated>2014-03-21T13:14:50+08:00</updated>
   <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
@@ -21,6 +21,9 @@
     <content type="html"><![CDATA[<p>本文由 <a href="http://objcio.com"><strong>Migrant</strong></a> 翻译自 <a href="http://www.objc.io/issue-3/custom-controls.html">Custom Controls</a>，转载请注明出处。</p>
 
 <p>本文将讨论一些自定义视图和控件的诀窍和技巧。我们先对UIKit已经提供给我们的控件做一个概览，介绍一些渲染技巧。随后我们会深入到视图和它们的所有者之间的通信策略，并简略探讨辅助功能，本地化和测试。</p>
+
+<!--more-->
+
 
 <h2>视图层次概览</h2>
 
