@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 翻译 | Migrant]]></title>
   <link href="http://objcio.com/blog/categories/fan-yi/atom.xml" rel="self"/>
   <link href="http://objcio.com/"/>
-  <updated>2014-03-21T13:14:50+08:00</updated>
+  <updated>2014-04-26T00:41:59+08:00</updated>
   <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
@@ -12,6 +12,227 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[精通iCloud文档存储]]></title>
+    <link href="http://objcio.com/blog/2014/04/25/mastering-the-icloud-document-store/"/>
+    <updated>2014-04-25T22:25:00+08:00</updated>
+    <id>http://objcio.com/blog/2014/04/25/mastering-the-icloud-document-store</id>
+    <content type="html"><![CDATA[<p>本文由 <a href="http://objcio.com"><strong>Migrant</strong></a> 翻译自 <a href="http://www.objc.io/issue-10/icloud-document-store.html">Mastering the iCloud Document Store</a>，转载请注明出处。</p>
+
+<p>即便在推出 3 年后，iCloud 文档存储依然是一个充满神秘、误解和抱怨的话题。iCloud 同步经常被批评不可靠且速度慢。虽然在 iCloud 的早期有一些严重的 bug，开发者们还是不得不学习有关文件同步的课程。文件同步事关重大，为应用开发带来了新方向 &mdash; 一个经常被低估的方向，比如进行同步服务相关的合作时，对于处理文件异步更改的需要。</p>
+
+<p>本文会介绍几个创建支持 iCloud 的应用时可能会遇到的一些绊脚石。因为本文只会给出一些粗略的概述，所以如果你对 iCloud 文档存储还不熟悉，我们强烈建议你先阅读 <a href="https://developer.apple.com/library/ios/documentation/General/Conceptual/iCloudDesignGuide/Chapters/DesigningForDocumentsIniCloud.html">Apple iCloud companion guide</a>。</p>
+
+<!--more-->
+
+
+<h2>文档存储简介</h2>
+
+<p>iCloud 文档存储的核心思想非常简单: 每个应用都有至少通往一个"魔法文件夹"的入口，该文件夹可以存储文件并且随后在所有注册了同一个 iCloud 帐号的设备间同步。</p>
+
+<p>与其他基于文件系统的同步服务相比，iCloud 文档存储得益于与 OS X 和 iOS 的深度整合。很多系统框架已经被扩展以支持 iCloud。像 <code>NSDocument</code> 和 <code>UIDocument</code> 这样的类被按照可以处理外部变化来进行设计。版本存储和 <code>NSFileVersion</code> 处理同步冲突。Spotlight 被用来提供同步元数据，比如文件传输进度或者云端文档可用性。</p>
+
+<p>写一个简单的基于文档并开启了 iCloud 的 OS X 应用并不需要费多大力气。实际上你并不需要关心任何 iCloud 内部的工作，<code>NSDocument</code> 无偿的做了几乎每件事情: 协调文档的 iCloud 访问，自动观察外部变化，触发下载，处理冲突。它甚至提供了一个简单的 UI 界面来管理云文档。你需要做的所有事情就是创建一个 <code>NSDocument</code> 子类并实现读取和写入文档内容所需要的方法。</p>
+
+<p><img src="/images/posts/2014-04-25-mastering-the-icloud-document-store-01.png" alt="NSDocument provides a simple user interface for managing the synchronized documents of an app." /></p>
+
+<p>然而，一旦脱离预设的路径，你就需要了解的更多。例如，默认打开面板提供的单层文件夹以外的任何操作都需要手动完成。可能你的应用需要管理除了文档内容以外的文档，比如像 Mail，iPhoto 或者 <a href="http://www.ulyssesapp.com/">Ulysses</a> (我们自己的app) 中做的那样。这种时候，你不能依赖于 <code>NSDocument</code>，而需要自己实现它的功能。但为此你需要对 iCloud 提供的锁和通知机制有一个深入的了解。</p>
+
+<p>开发支持 iCloud 的 iOS 应用同样需要更多的工作和知识: 虽然 <code>UIDocument</code> 仍然管理 iCloud 文件访问和处理同步冲突，但缺乏管理文档和文件夹的图形界面。因为性能和存储空间的原因，iOS 也不会自动从云端下载新文档。你需要使用 Spotlight 来检索最近变化的目录并手动触发下载。</p>
+
+<h2>什么是开放性容器 (Ubiquity Container)</h2>
+
+<p>任何符合 App Store 条件的应用都可以使用 iCloud 文档存储。设置正确的<a href="https://developer.apple.com/library/ios/documentation/General/Conceptual/iCloudDesignGuide/Chapters/iCloudFundametals.html#//apple_ref/doc/uid/TP40012094-CH6-SW13">授权</a>后，就获得了一个或多个所谓的"开放性容器"的访问权限。这是苹果用来称呼"一个被 iCloud 管理和同步的目录"的别称。每一个开放性容器限定在一个 app id 内，由此让每个用户在每个应用中有一份共享的存储仓库。有多个应用的开发者可以指定同一个团队的多个 app id，由此可以访问多个容器。</p>
+
+<p><code>NSFileManager</code> 通过 <a href="https://developer.apple.com/library/mac/documentation/cocoa/reference/foundation/classes/nsfilemanager_class/reference/reference.html#//apple_ref/occ/instm/NSFileManager/URLForUbiquityContainerIdentifier:">URLForUbiquityContainerIdentifier:</a> 提供每一个容器的 URL。在 OS X 系统，可以通过打开 <code>~/Library/Mobile Documents</code> 目录来查看所有可用的开放性容器。</p>
+
+<p><img src="/images/posts/2014-04-25-mastering-the-icloud-document-store-02.png" alt="The contents of ”~/Library/Mobile Documents.“ It contains a separate folder for each ubiquity container of each application." /></p>
+
+<p>通常每个开放性容器有两个并发进程访问。首先，有一个应用呈现和操作容器内的文档。第二，有一个主要通过开放性守护 (Ubiquity Daemon <em>ubd</em>) 体现的 iCloud 架构。iCloud 架构等待应用对文档的更改并将其上传至苹果云服务器。同时也等待从 iCloud 上收到的更改并相应修改容器的内容。</p>
+
+<p>由于两个进程完全独立于彼此工作，因此需某种形式的仲裁来避免资源竞争或丢失容器内的文件更新的问题。应用需要使用名为 <a href="https://developer.apple.com/library/ios/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileCoordinators/FileCoordinators.html#//apple_ref/doc/uid/TP40010672-CH11-SW1"><em>文件协调 file coordination</em></a> 的概念来确保对于每一个独立文件的访问权。该访问权由 <a href="https://developer.apple.com/library/mac/documentation/Foundation/Reference/NSFileCoordinator_class/Reference/Reference.html"><code>NSFileCoordinator</code></a> 类提供。概括来说，它为每个文件提供了一个简单的 读-写 锁。这个锁由一个通知机制扩展，该机制用于用于改善访问同一个文件的不同进程间的合作。</p>
+
+<p>这个通知机制相比于简单的文件锁来说是有巨大的好处，并且提供了无缝的用户体验。iCloud 可能会在任何时间把文档用一个来自其他设备的新版本覆盖。如果一个应用当前正在显示同一个文档，它必须从磁盘加载新版本并向用户展示更新过的内容。更新过程中，应用可能需要锁住用户界面一段时间并随后在此打开。甚至可能发生更坏的情况: 应用可能保留着未保存的内容，这些内容需要<em>首先</em>保存到磁盘上以便检查同步冲突。最后，在网络条件良好的时候 iCloud 会上传文件最近的版本。因此必须能够要求应用立刻保存所有未保存的变更。</p>
+
+<p>为了实现这个过程，文件协调伴随着另一套名为 <em>文件展示 (file presentation)</em> 的机制。无论什么时候应用打开并向用户展示一个文件，这被称为 <em>展示文档</em>，并且应该注册一个实现了 <a href="https://developer.apple.com/library/mac/documentation/Foundation/Reference/NSFilePresenter_protocol/Reference/Reference.html"><code>NSFilePresenter</code></a> 协议的对象。只要另一个进程通过一个文件协调访问文件，文件展示者 (file presenter) 就会收到关于该文件的通知。这些通知被作为方法调用传递，这些方法在展示者指定的一个操作队列(<a href="https://developer.apple.com/library/mac/documentation/Foundation/Reference/NSFilePresenter_protocol/Reference/Reference.html#//apple_ref/occ/intfp/NSFilePresenter/presentedItemOperationQueue"><code>presentedItemOperationQueue</code></a>)中异步执行。</p>
+
+<p>例如，在任何其他线程被允许开始一个读取操作前，文件展示者被要求保存任何未保存的变化。这些操作通过分发一个 block 到它的展示队列来执行 <a href="https://developer.apple.com/library/mac/documentation/Foundation/Reference/NSFilePresenter_protocol/Reference/Reference.html#//apple_ref/occ/intfm/NSFilePresenter/savePresentedItemChangesWithCompletionHandler:"><code>savePresentedItemChangesWithCompletionHandler:</code></a> 方法来完成。展示者需要保存文件并通过执行作为参数传入的 block 来确认通知。除了改变通知，文件展示者还用来通知应用同步冲突。一旦一个文件的冲突版本被下载，一个新的文件版本被加入到版本存储里。所有的展示者通过 <a href="https://developer.apple.com/library/mac/documentation/Foundation/Reference/NSFilePresenter_protocol/Reference/Reference.html#//apple_ref/occ/intfm/NSFilePresenter/presentedItemDidGainVersion:"><code>presentedItemDidGainVersion:</code></a> 被通知有一个新版本被创建。该回调接收一个引用了潜在冲突的 <code>NSFileVersion</code> 实例。</p>
+
+<p>文件展示者还可以被用来监视文件夹内容。例如，一旦 iCloud 改变文件夹内容，如创建，删除或者移动文件，应用应该被通知到以便更新它的文档展示。为此，应用可以对展示的目录注册一个实现了 <code>NSFilePresenter</code> 协议的实例。一个目录的文件展示者会收到任何文件夹或其中文件或子文件夹的改变的通知。比如一个文件夹内的文件被修改，展示者会收到一个引用了该文件的 URL 的 <code>presentedSubitemDidChangeAtURL:</code> 通知。</p>
+
+<p>因为带宽和电池寿命在移动设备上更加有限，iOS 不会自动从 iCloud 下载新文件。而是由应用手动决定何时来触发下载新文件到开放性容器中。为了持续告知应用哪些文件可用及其同步状态，iCloud 还会同步开放性容器内的文件元信息。应用可以通过 <code>NSMetadataQuery</code> 或访问 <code>NSURL</code> 的开放资源属性查询这些元信息。无论何时应用想要访问一个文件，它一定会通过 <code>NSFileManager</code> 的 <a href="https://developer.apple.com/library/mac/documentation/cocoa/reference/foundation/classes/nsfilemanager_class/reference/reference.html#//apple_ref/occ/instm/NSFileManager/startDownloadingUbiquitousItemAtURL:error:"><code>startDownloadingUbiquitousItemAtURL:error:</code></a> 来触发下载行为。</p>
+
+<h2>深入 iCloud</h2>
+
+<p>在继续解释如何实现文件协调和观察之前，现在我们将深入一些过去几年里碰到的一些常见问题。再一次的，确保你已经阅读并理解了 <a href="https://developer.apple.com/library/ios/documentation/General/Conceptual/iCloudDesignGuide/Chapters/DesigningForDocumentsIniCloud.html">Apple iCloud companion guide</a>。</p>
+
+<p>虽然这些文件机制的描述让它们的使用看起来简单明了，但其实其中有很多隐藏的陷阱。这些陷阱中有些来自于底层框架的 bug。因为 iCloud 同步延伸到操作系统中相当多的层面，人们只能寄希望于苹果能够小心的修复这些 bug。实际上，苹果看起来宁愿废弃坏掉的 API 而不是修复它们。</p>
+
+<p>即便如此，我们的经验告诉我们使用 iCloud 是非常非常容易犯错误的。异步，协作，基于锁特性的文件协调和文件展示互相牵连，并不容易掌握。下面，我们将介绍整合 iCloud 文档同步时的一些主要规则，并以这种形式分享我们的经验。</p>
+
+<h3>只在需要时使用 Presenters</h3>
+
+<p>文件展示者代价高昂。仅当你的应用需要立即应对或干预文件访问的时候，才应该使用它。</p>
+
+<p>如果你的应用正在展示类似文档编辑器这样的东西给用户，文件展示足以胜任。这时，在其他进程写入该文件的时候也许需要锁住编辑器，或者还需要保存未保存的改变。然而，如果只是临时访问并且通知也可能会被延迟处理，就不应该使用文件展示。例如，当创建文件索引或缩略图，查看文件更改日期并使用简单的文件协调可能会更高效。另外，如果你正展示一个字典树的内容，在树的根节点注册 <em>一个</em> 展示者或用 <code>NSMetadataQuery</code> 来延迟获取改变通知会可能会非常高效。</p>
+
+<p>是什么让文件展示代价如此高昂？它需要很多的进程间通信: 每个文件上注册的展示者在其他进程获取文件的访问权时都被要求释放该文件。比如另一个进程尝试读取一个文件，该文件的展示者会被要求保存所有未保存的内容 (<a href="https://developer.apple.com/library/mac/documentation/Foundation/Reference/NSFilePresenter_protocol/Reference/Reference.html#//apple_ref/occ/intfm/NSFilePresenter/savePresentedItemChangesWithCompletionHandler:"><code>savePresentedItemChangesWithCompletionHandler:</code></a>)。它们还会被要求释放文件给读取者(<a href="https://developer.apple.com/library/mac/documentation/Foundation/Reference/NSFilePresenter_protocol/Reference/Reference.html#//apple_ref/occ/intfm/NSFilePresenter/relinquishPresentedItemToReader:"><code>relinquishPresentedItemToReader:</code></a>)，例如文件被读取时暂时锁住编辑器。</p>
+
+<p>这些通知每一个都需要分发，加工并由各自的接收者确认。并且因为只有实现的进程知道哪些通知会被处理，所以即使展示者没有实现任何方法，进程间也会为每一个可能的通知进行通信。</p>
+
+<p>另外，每个步骤都需要在读取进程，展示进程和文件协调守护进程 (<code>filecoordinationd</code>) 间的多重上下文的切换。结果就导致了一个简单的文件访问很快就变成耗费资源的操作。</p>
+
+<p>除此之外，如果太多的展示者被注册，文件协调守护进程可能会删除重要的系统资源。对于每一个展示者，都需要打开并监听每一个它所描述的路径上的文件夹。尤其在 OS X Lion 和 iOS 5 上，这些资源是非常稀少的，过度的使用很容易导致文件协调守护进程的锁死或崩溃。</p>
+
+<p>基于这些原因，我们强烈建议不要在目录树的每一个节点上增加文件展示者，只根据需要使用最少的文件展示者。</p>
+
+<h3>只在需要时使用协调</h3>
+
+<p>虽然文件协调要比文件展示节约资源，但它仍然给你的应用和整个系统增加额外的负担。</p>
+
+<p>每当你的应用正在协调一个文件，其他同时想要访问同一个文件的进程可能需要等待。因此你不该在协调文件时执行过于耗时的任务。如果你这么做了，比如存储了大文件，你可以考虑将它存储到一个临时文件夹，随后在协调访问时使用硬连接。注意每一个协调的访问都可能会触发另一个进程上的文件展示者 &mdash; 该展示者可能需要时间在你的访问之前更新文件。始终考虑使用诸如 <code>NSFileCoordinatorReadingWithoutChanges</code> 这样的标识，除非需要读取文件的最新版本。</p>
+
+<p>虽然你的应用的开放性容器可能不会被其他应用访问，过分的文件协调仍然可能成为 iCloud 的一个问题，执行太多的协调请求会造成类似 <code>ubd</code> 的进程的<a href="http://en.wikipedia.org/wiki/Resource_starvation">资源饥饿</a>问题。在应用启动阶段，<code>ubd</code> 似乎会扫描开放性容器内的所有文件。如果你的应用在程序启动阶段也在执行相同的扫描。两个进程会经常冲突，从而可能导致协调的高开销。这时考虑更优化的解决方案是明智的。例如扫描目录内容时，单独的文件内容访问权限是根本不需要的。把协调工作延迟到文件内容真正被展示的时候再进行会是不错的选择。</p>
+
+<p>最后，绝对不要协调一个还没有被下载的文件。文件协调会触发对该文件的下载。不幸的是，协调将会一直等待直到下载完成，这有可能会导致应用被锁住很长一段时间。访问一个文件之前，应用应该先检查文件下载状态。你可以通过查询 URL 的 <code>NSURLUbiquitousItemDownloadingStatusKey</code> 的值或使用 <code>NSMetadataQuery</code> 做到这一点。</p>
+
+<h3>协调方法的几个备注</h3>
+
+<p>阅读 <code>NSFileCoordinator</code> 的文档，你可能注意到每个方法都有一个冗长而复杂的描述。虽然 API 文档通常是非常可靠的，但由于同其他协调器和文件展示者交互的多样性，以及文件夹和文件锁的语法多样性，都造成了很高的复杂度。有一些很容易忽略的细节和问题贯穿这些长长的描述:</p>
+
+<ol>
+<li>认真选择协调选项。它们真的对文件协调器和文件展示者有着影响。比如，如果没有采用 <code>NSFileCoordinatorWritingForDeleting</code> 标识，文件展示者将无法通过 <code>accommodatePresentedItemDeletionWithCompletionHandler:</code> 对文件删除操作做出影响。如果移动目录时不使用 <code>NSFileCoordinatorWritingForMoving</code>，则移动操作将不会等待其子项目上正在执行的协调操作进行完成。</li>
+<li>始终认为协调调用可能会失败并返回错误。因为文件协调同 iCloud 交互，如果被协调的文件不能被下载，协调调用会失败并产生一条错误信息，并且你实际的文件操作可能不会被执行。如果没有正确的实现错误处理方法，你的应用可能不会注意到这样的问题。</li>
+<li>在进入协调 block 之后检查文件状态。协调请求之后，也许很长时间已经过去了。这时，应用操作文件的前提条件可能已经失效。你想写入的信息直到重新获得锁之前有可能都是脏数据。也可能在你等待获得写入权限的时候文件已经被删除。这时你可能会无意中再次创建已经被删除的文件。</li>
+</ol>
+
+
+<h3>通知死锁</h3>
+
+<p>实现 <code>NSFilePresenter</code> 的通知处理方法需要特别注意。类似 <code>relinquishPresentedItemToReader:</code> 这样的通知处理方法必须被确认及告知其他进程该文件已经对访问准备就绪。这一般通过执行作为参数传入通知处理方法的确认 block 来完成。确认 block 被调用之前，其他进程不得不等待，了解这一点是尤为重要的。如果确认因为通知处理的缓慢而被延迟，协调进程也许会被搁置。如果一直没有被执行，则可能会永远被挂起。</p>
+
+<p>不幸的是，需要被确认的通知也会被其他完全独立的通知拖慢。为了确保通知以正确的顺序执行，<code>presentedItemOperationQueue</code> 一般被设置为一个顺序执行队列。但是一个顺序队列就意味着处理速度慢的通知会延缓随后的通知。尤其是它们会延缓需要确认的通知，在那之前，所有的进程都将等待。</p>
+
+<p>例如，假设一个 <code>presentedItemDidChange</code> 通知首先进入队列。该回调漫长的处理过程将会延缓其他随后进入队列的通知，比如 <code>relinquishPresentedItemToReader:</code>。因此，该通知的确认也会被延迟，从而也导致等待它的进程被延缓。</p>
+
+<p>综上所述，在展示队列里的时候 <em>永远不要</em> 执行文件协调。实际上，即使简单的不需要任何确认的通知 (比如 <code>presentedItemDidChange</code>) 也会导致死锁。设想两个文件展示者同时在展示同一个文件。两个展示者都通过执行协调的读取操作来处理 <code>presentedItemDidChange</code> 通知。如果文件发生改变，通知被发送到两个展示者并且二者都在同一个文件上执行协调的读取操作。因此，两个展示者都通过入队一个  <code>relinquishPresentedItemToReader:</code> 请求对方释放文件并等待对方确认。不幸的是，两个展示者无法确认通知，因为它们都因为永久的等待对方确认的协调请求而阻塞了它们的展示队列。我们在 <a href="https://github.com/hydrixos/DeadlockExample">GitHub</a> 上提供了一个小例子展示这种死锁。</p>
+
+<h3>通知缺陷</h3>
+
+<p>从通知中得出正确结论并不容易。文件展示中存在的 bug 造成了有些通知处理器<em>从未被执行</em>。这里初步介绍一些已知的不太规律的通知:</p>
+
+<ol>
+<li>除了 <code>presentedSubitemDidChangeAtURL:</code> 和 <code>presentedSubitemAtURL:didMoveToURL:</code>，所有的子项目通知要么不被调用，要么以一种难以预测的方式被调用。绝对不要依赖它们 &mdash; 实际上，<code>presentedSubitemDidAppearAtURL:</code> 和 <code>accommodatePresentedSubitemDeletionAtURL:completionHandler:</code> 从不会被调用。</li>
+<li>只有通过使用了 <code>NSFileCoordinatorWritingForDeleting</code> 的文件协调来删除文件，<code>accommodatePresentedItemDeletionWithCompletionHandler:</code> 才会工作。否则，你会连一个 change 的通知都收不到。</li>
+<li>只有文件展示者执行 <code>itemAtURL:didMoveToURL:</code> 时，<code>presentedItemDidMoveToURL:</code> 和 <code>presentedSubitemAtURL:didMoveToURL:</code> 才会被调用。否则项目不会收到任何有用的通知。子项目仍旧会分别针对旧的和新的 URL 收到 <code>presentedSubitemDidChange</code> 通知。</li>
+<li>即使文件被正确移动，<code>presentedSubitemAtURL:didMoveToURL:</code> 通知也被发送，你仍然会针对旧的和新的 URL 收到两个额外的 <code>presentedSubitemDidChangeAtURL:</code> 通知。要做好准备好处理这个。</li>
+</ol>
+
+
+<p>一般来说，你必须注意通知可能会失效。也不应该依赖于任何特定的通知顺序。例如，当描述一个目录树时，你不能期望父文件夹的通知会先于或晚于其中子项目的通知。</p>
+
+<h3>注意 URL 变化</h3>
+
+<p>在文件协调和文件展示者传递参照着相同文件的不同的 URL 时，有几种你需要应对的情况。你绝不应该使用 <code>isEqual:</code> 比较 URL，因为两个不同的 URL 可能关联同一个文件。应该始终在比较之前标准化它们。这一点在 iOS 上尤为重要，在 iOS 中开放性容器存储在 <code>/var/mobile/Library/Mobile Documents/</code> 中，这个文件夹是 <code>/private/var/mobile/Library/Mobile Documents/</code> 的符号链接。你会收到带有指向同一个文件，基于 <em>两种路径变体</em> 的 URL 的展示者通知。如果你对 iCloud 和本地文档使用文件协调代码，这个问题在 OS X 上也会发生。</p>
+
+<p>除此之外，还有几个关于大小写不敏感的文件系统的问题。<em>如果</em>文件系统要求，应该始终确保你使用大小写不敏感的文件名比较。文件协调 block 和展示者通知可能传递使用不同大小写的相同的 URL 变体。实际上，这是使用文件协调器重命名时的重要问题。为了搞懂这个问题，你需要回顾文件实际上是如何被重命名的:</p>
+
+<p>```objc
+[coordinator coordinateWritingItemAtURL:sourceURL</p>
+
+<pre><code>                            options:NSFileCoordinatorWritingForMoving 
+                   writingItemAtURL:destURL 
+                            options:0 
+                              error:NULL 
+                         byAccessor:^(NSURL *oldURL, NSURL *newURL) 
+</code></pre>
+
+<p>{</p>
+
+<pre><code>[NSFileManager.defaultManager moveItemAtURL:oldURL toURL:newURL error:NULL];
+[coordinator itemAtURL:oldURL didMoveToURL:newURL];
+</code></pre>
+
+<p>}];
+```</p>
+
+<p>假设 <code>sourceURL</code> 指向一个名为 <code>~/Desktop/my text</code> 的文件，<code>destURL</code> 使用了大写字母的新文件名 <code>~/Desktop/My Text</code>。协调 block 被有意设计成传入两个 URL 的最新版本，以兼容等待文件访问时发生的移动操作。现在，不幸的，当改变文件名的大小写，文件协调所执行的 URL 校验将会发现新旧两个 URL 都存在一个有效文件，而新的 URL 是小写 <code>~/Desktop/my text</code> 的变体。访问 block 将会接收到同样的 <em>小写</em> URL 作为 <code>oldURL</code> 和 <code>newURL</code>，导致移动操作失败。</p>
+
+<h3>请求下载</h3>
+
+<p>在 iOS 中，触发从 iCloud 的下载是应用的责任。可以通过 <code>NSFileManager</code> 的 <a href="https://developer.apple.com/library/mac/documentation/cocoa/reference/foundation/classes/nsfilemanager_class/reference/reference.html#//apple_ref/occ/instm/NSFileManager/startDownloadingUbiquitousItemAtURL:error:"><code>startDownloadingUbiquitousItemAtURL:error:</code></a> 方法触发下载。如果你的应用设计成自动下载文件 (也就是不由用户触发)，你应该始终在一个顺序后台队列中执行这些下载请求。换句话说，每一个单独的下载请求涉及到相当多的进程间通信并可能会很耗时。另一方面，同时触发太多的下载有时会过载 <em>ubd</em> 守护进程。一个普遍的错误就是使用 <code>NSMetadataQuery</code> 等待 iCloud 中的新文件然后自动触发下载它们。因为查询结果总是在主队列中传递并且可能包含一打的更新信息，直接触发下载会阻塞应用很长一段时间。</p>
+
+<p>为了查询某个文件的下载或者上传状态，你可以使用 <code>NSURL</code> 的资源值。在 iOS 7 / OS X 10.9 之前，一个文件的下载状态通过 <code>NSURLUbiquitousItemIsDownloadedKey</code> 来确认。根据头文件文档，这个资源值从未正确生效过，所以在 iOS 7 和 Mavericks 中被废弃了。现在苹果建议使用 <code>NSURLUbiquitousItemDownloadingStatusKey</code>。在老系统上，你应该使用 <code>NSMetadataQuery</code> 查询 <code>NSMetadataUbiquitousItemIsDownloadedKey</code> 来获得正确的下载状态。</p>
+
+<h2>综合考虑</h2>
+
+<p>为你的应用增加 iCloud 支持并不只是你增加的另一个功能，而是一个对应用设计和实现有着深远影响的决定。它既影响着你的数据模型也影响着 UI。所以不要低估支持 iCloud 所需要做出的努力。</p>
+
+<p>最重要的，增加 iCloud 会引入一个新的异步层。应用必须能够在任何时候处理文档和元数据的变化。这些变化上的通知可能会在不同线程上收到，这就需要在你的整个应用中添加同步机制来对这些通知进行适当的处理。你需要注意那些对于用户文档完整性有重大影响的关键代码中的问题，比如丢失更新，竞争和死锁等。</p>
+
+<p>始终注意 iCloud 的同步保证是非常脆弱的。你只能假设文件和包是自动同步的。但你不能期望多个同时被修改的文件也会被立刻同步。比如，如果你的应用分开存储元信息和实际的文件的话，你一定要能够应对元信息会先于或晚于实际文件被下载的情况。</p>
+
+<p>使用 iCloud 文档同步同时也意味着你正在做一个发布的应用。你的文档会在运行着不同版本的不同设备上。你可能想要使你文件格式的不同版本向前兼容。起码，你必须确保你的应用在面对其他不同设备上安装的新版本应用创建的文件时不会崩溃或发生错误。用户未必会立刻更新所有的设备，所以预先准备好这个问题。</p>
+
+<p>最后，你的 UI 需要反映同步行为。即使这会抹杀掉一些神奇之处。尤其在 iOS 上，连接失败和缓慢的文件转换是现实状况。你的用户应该被通知关于文档的同步状态。你应该考虑展示文件是在被上传还是在下载，以告知用户他们的文档现在是否可用。使用大文件时，你可能需要显示文件传输进度，你的 UI 应该优雅一些; 如果 iCloud 不能及时给你某个文档，你的应用应该响应，并且让用户重试或至少放弃操作。</p>
+
+<h2>调试</h2>
+
+<p>因为涉及到多系统服务和外部服务，调试 iCloud 问题非常困难。Xcode 5 提供的 iCloud 调试功能非常有限并且大多数时候只会告诉你 iCloud 是否已经同步。幸运的是，还有一些差不多是官方的方法来调试 iCloud 文档存储。</p>
+
+<h3>在 OS X 上调试</h3>
+
+<p>有时你可能经历过 iCould 停止同步某个文件或干脆完全停止工作。实际上，这在文件协调器内使用断点或在一个文件操作进行期间杀掉一个进程时很容易发生。甚至如果你的应用在某个关键点崩溃后也会发生。通常来说，重启或者注销后重新登录 iCloud 都不能修复这个问题。</p>
+
+<p>为了修复这些锁定，一个命令行工具会非常有好处: <code>ubcontrol</code>。这个工具是 10.7 以后版本 OS X 的一部分。使用命令 <code>ubcontrol -x</code>，你能够重置文档同步的本地状态。它通过重置一些私有数据库和缓存，重启所有涉及到的系统守护进程，来复原熄火的同步。同时它也会存储一些报告分析信息到 <code>~/Library/Application Support/Ubiquity-backups</code>。</p>
+
+<p>虽然已经有日志文件被写入 <code>~/Library/Logs/Ubiquity</code> 中，你也还可以通过 <code>ubcontrol -k 7</code> 来增加日志级别。在进行 iCloud 相关的错误报告时，苹果工程师经常会要求你这么做以便收集信息。</p>
+
+<p>为了调试文件协调，你还可以从文件协调守护进程中直接取回锁状态信息。这使你能够得知在应用中或多进程间可能遇到的文件协调死锁。为了访问这个信息，你需要在终端中执行以下命令:</p>
+
+<p><code>objc
+sudo heap filecoordinationd -addresses NSFileAccessArbiter
+sudo lldb -n filecoordinationd
+po [&lt;address&gt; valueForKey: @"rootNode"]
+</code></p>
+
+<p>第一个命令会返回一个文件协调守护进程的内部单例对象的地址。随后，你关联 <em>lldb</em> 到运行的守护进程上。通过使用第一步取回的地址，你将会得到一个所有活动的锁和文件展示者的状态的概览。调试命令会展示当前正在被展示或协调的整个文件树。例如，如果 TextEdit 正在展示一个名为 <code>example.txt</code> 的文件，你会得到以下跟踪信息:</p>
+
+<p>```
+example.txt</p>
+
+<pre><code>&lt;NSFileAccessNode 0x…&gt; parent: 0x…, name: "example.txt"
+presenters:
+    &lt;NSFilePresenterProxy …&gt; client: TextEdit …&gt;
+    location: 0x7f9f4060b940
+access claims: &lt;none&gt;
+progress subscribers: &lt;none&gt;
+progress publishers: &lt;none&gt;
+children: &lt;none&gt;****
+</code></pre>
+
+<p>```</p>
+
+<p>如果你在文件协调进行时创建这种跟踪 (比如通过在文件协调 block 中设置断点)，你还会得到一个等待文件协调器的所有进程的列表。</p>
+
+<p>如果通过 <em>lldb</em> 观察文件协调，你应该始终记得尽快执行 <code>detach</code> 命令。否则，全局根进程文件协调守护进程将一直等待，这会影响到系统中几乎所有的应用。</p>
+
+<h3>在 iOS 上调试</h3>
+
+<p>在 iOS 上，调试要更加复杂，因为你无法检查运行的系统进程，你也无法使用像 <code>ubcontrol</code> 的命令行工具。</p>
+
+<p>iCloud 锁定在 iOS 上似乎更经常发生。重启应用或设备都无效。唯一有效的修复这种问题的方法是 <em>冷启动</em>。在冷启动过程中，iOS 似乎进行了 iClouds 的内部数据库重置。可以通过同时按下电源键和 home 键 10 秒钟冷启动设备。</p>
+
+<p>为了在 iOS 上激活更详细的日志，在苹果 <a href="https://developer.apple.com/downloads">developer downloads page</a> 有一个专用的 iCloud 日志概述。如果搜索 &ldquo;Bug Reporter Logging Profiles (iOS)"，你将会找到一个叫做 "iCloud Logging Profile&rdquo; 移动设备概述。在你的 iOS 设备上安装该文件来激活更详细的日志。你可以用 iTunes 同步设备来访问这些日志.随后，你可以在 <code>Library/Logs/CrashReporter/Mobile Device/&lt;Device Name&gt;/DiagnosticLogs/Ubiquity</code> 文件夹找到它。如果想要关掉这种加强的日志输出，从设备删除描述文件即可。苹果建议你在激活或关闭概述前重启设备。</p>
+
+<h3>在 iCloud Servers 上调试</h3>
+
+<p>除了在你自己的设备上调试，考虑使用苹果服务上的调试服务可能也会有用。<a href="https://developer.icloud.com/">developer.icloud.com</a> 上有一个特殊的 web 应用，它允许你浏览存储在开放性容器内的所有信息和当前传输状态。</p>
+
+<p>过去的几个月，苹果还提供了安全地在服务端对所有已连接设备进行 iCloud 重置的方法。更多信息可查看 <a href="http://support.apple.com/kb/HT5824">support document</a>。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[自定义控件]]></title>
@@ -1612,475 +1833,6 @@ newYMin = MIN(newYMin, points[i].y);
 <p>关于<code>frame</code>getter方法，<code>bounds</code>和<code>center</code>，<code>UIView</code>并没有做什么工作；它只是简单的各自调用它底层的CALayer的<code>frame</code>，<code>bounds</code>和<code>position</code>方法。</p>
 
 <p>注意<code>center</code>到<code>position</code>的映射 &mdash; 改变底层<code>layer</code>的<code>anchorPoint</code>会使<code>center</code>不能正确的对应到层的"中心"或者层的边界矩形的"中点"。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[在iOS中创建静态库]]></title>
-    <link href="http://objcio.com/blog/2013/11/30/creating-a-static-library-in-ios-tutorial/"/>
-    <updated>2013-11-30T22:45:00+08:00</updated>
-    <id>http://objcio.com/blog/2013/11/30/creating-a-static-library-in-ios-tutorial</id>
-    <content type="html"><![CDATA[<p>本文由 <a href="http://migrant.github.io/"><strong>Migrant</strong></a> 翻译自 <a href="http://www.raywenderlich.com/41377/creating-a-static-library-in-ios-tutorial">Creating a Static Library in iOS Tutorial</a>，转载请注明出处。</p>
-
-<p><img class="right" src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-00.jpg" title="Create a static library in iOS!" ></p>
-
-<p>如果你作为iOS开发者已经有一段时间，可能会有一套属于自己的类和工具函数，它们在你的大多数项目中被重用。</p>
-
-<p>重用代码的最简单方法是简单的 <em>拷贝/粘贴</em> 源文件。然而，这种方法很快就会成为维护时的噩梦。因为每个应用都有自己的一份代码副本，你很难在修复bug或者升级时保证所有副本的同步。</p>
-
-<p>这就是静态库要拯救你的。一个静态库是若干个类，函数，定义和资源的包装，你可以将其打包并很容易的在项目之间共享。</p>
-
-<p>在本教程中，你将用两种方法亲手创建你自己的通用静态库。</p>
-
-<!--more-->
-
-
-<p>为了获得最佳效果，你应该熟悉Objective-C和iOS编程。Core Image的相关知识并不是必须的，但是如果你对示例工程和滤镜代码如何工作感兴趣，了解它会有所帮助。</p>
-
-<p>准备好以效率的名义减少，重用并再生你的代码!</p>
-
-<h2>为什么使用静态库</h2>
-
-<p>创建静态库可能出于以下几个理由:</p>
-
-<ul>
-<li>你想将一些你和你团队中的同事们经常使用的类打包并轻松的分享给周围其他人。</li>
-<li>你想让一些通用代码处于自己的掌控之下，以便于修复和升级。</li>
-<li>你想将库共享给其他人，但不想让他们看到你的源代码。</li>
-<li>你想创建一个还在不断开发的库的快照版本。</li>
-</ul>
-
-
-<p>本教程假设你已经完成学习<a href="http://www.raywenderlich.com/22167/beginning-core-image-in-ios-6">Core Image Tutorial</a>，并对其中展示如何应用图片特效的代码得心应手。</p>
-
-<p>将上述代码添加到一个静态库中，然后在一个应用的修改版本中使用这个静态库。我们会得到一个带有上面列表中全部好处的完全相同的应用。</p>
-
-<h2>开始</h2>
-
-<p>运行Xcode，选择<code>File\New\Project</code>，在<code>Choose a template</code> 对话框中选择<code>iOS\Framework &amp; Library\Cocoa Touch Static Library</code>,如下图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-01.png" title="New Lib" alt="New Lib" /></p>
-
-<p>点击<code>Next</code>。在工程选项对话框中，输入<code>ImageFilters</code>作为产品名。再输入一个唯一的公司标识，确保<code>Use Automatic Reference Counting</code>被选中且<code>Include Unit Tests</code>未选中。如下图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-02.png" title="Lib Name" alt="Lib Name" /></p>
-
-<p>点击<code>Next</code>。最后，选择你想保存工程的位置并点击<code>Create</code>。</p>
-
-<p>Xcode已经准备好静态库工程，甚至已经为你添加了一个<code>ImageFilters</code>类。这就是你的滤镜代码将要存放的地方。</p>
-
-<blockquote><p>注意: 你可以添加任意数量的类到静态库中或者从中删除原有的类。本教程中的代码都会写在开始就被创建好的<code>ImageFilters</code>类中。</p></blockquote>
-
-<p>你的Xcode工程还是一片空白，现在我们添加一些代码进去!</p>
-
-<h2>图片滤镜</h2>
-
-<p>该库使用UIKit，为iOS设计，所以你要做的第一件事就是在头文件中导入UIKit。打开<code>ImageFilters.h</code>，在文件顶部添加以下代码:</p>
-
-<p>```objc</p>
-
-<h1>import &lt;UIKit/UIKit.h></h1>
-
-<p>```</p>
-
-<p>接下来将以下声明部分的代码粘贴到<code>@interface ImageFilters : NSObject</code>下面</p>
-
-<p>```objc
-@property (nonatomic,readonly) UIImage *originalImage;</p>
-
-<ul>
-<li>(id)initWithImage:(UIImage *)image;</li>
-<li>(UIImage *)grayScaleImage;</li>
-<li>(UIImage *)oldImageWithIntensity:(CGFloat)level;
-```</li>
-</ul>
-
-
-<p>这些头文件中的声明定义了类的公开接口。其他开发者(包括你自己)使用该库时，只需通过阅读该头文件就可以知道类名和暴露的方法。</p>
-
-<p>现在增加实现。打开<code>ImageFilters.m</code>文件，粘贴以下代码到<code>#import "ImageFilters.h"</code>下面:</p>
-
-<p>```objc
-@interface ImageFilters()</p>
-
-<p>@property (nonatomic,strong) CIContext  <em>context;
-@property (nonatomic,strong) CIImage    </em>beginImage;</p>
-
-<p>@end
-```</p>
-
-<p>上面的代码声明了一些内部使用的属性。它们不是公开的，所以使用该库的引用没有使用它们的入口。</p>
-
-<p>最后，你需要实现方法。粘贴以下代码到<code>@implementation ImageFilters:</code>下面:</p>
-
-<p>```objc
-&ndash; (id)initWithImage:(UIImage *)image
-{</p>
-
-<pre><code>self = [super init];
-if (self) {
-    _originalImage  = image;
-    _context        = [CIContext contextWithOptions:nil];
-    _beginImage     = [[CIImage alloc] initWithImage:_originalImage];
-}
-return self;
-</code></pre>
-
-<p>}</p>
-
-<ul>
-<li><p>(UIImage<em>)imageWithCIImage:(CIImage </em>)ciImage
-{
-  CGImageRef cgiImage = [self.context createCGImage:ciImage fromRect:ciImage.extent];
-  UIImage *image = [UIImage imageWithCGImage:cgiImage];
-  CGImageRelease(cgiImage);</p>
-
-<p>  return image;
-}</p></li>
-<li><p>(UIImage *)grayScaleImage
-{
-  if( !self.originalImage)
-      return nil;</p>
-
-<p>  CIImage *grayScaleFilter = [CIFilter filterWithName:@&ldquo;CIColorControls&rdquo; keysAndValues:kCIInputImageKey, self.beginImage, @&ldquo;inputBrightness&rdquo;, [NSNumber numberWithFloat:0.0], @&ldquo;inputContrast&rdquo;, [NSNumber numberWithFloat:1.1], @&ldquo;inputSaturation&rdquo;, [NSNumber numberWithFloat:0.0], nil].outputImage;</p>
-
-<p>  CIImage *output = [CIFilter filterWithName:@&ldquo;CIExposureAdjust&rdquo; keysAndValues:kCIInputImageKey, grayScaleFilter, @&ldquo;inputEV&rdquo;, [NSNumber numberWithFloat:0.7], nil].outputImage;</p>
-
-<p>  UIImage *filteredImage = [self imageWithCIImage:output];
-  return filteredImage;
-}</p></li>
-<li><p>(UIImage *)oldImageWithIntensity:(CGFloat)intensity
-{
-  if( !self.originalImage )
-      return nil;</p>
-
-<p>  CIFilter *sepia = [CIFilter filterWithName:@&ldquo;CISepiaTone&rdquo;];
-  [sepia setValue:self.beginImage forKey:kCIInputImageKey];
-  [sepia setValue:@(intensity) forKey:@&ldquo;inputIntensity&rdquo;];</p>
-
-<p>  CIFilter *random = [CIFilter filterWithName:@&ldquo;CIRandomGenerator&rdquo;];</p>
-
-<p>  CIFilter *lighten = [CIFilter filterWithName:@&ldquo;CIColorControls&rdquo;];
-  [lighten setValue:random.outputImage forKey:kCIInputImageKey];
-  [lighten setValue:@(1 &ndash; intensity) forKey:@&ldquo;inputBrightness&rdquo;];
-  [lighten setValue:@0.0 forKey:@&ldquo;inputSaturation&rdquo;];</p>
-
-<p>  CIImage *croppedImage = [lighten.outputImage imageByCroppingToRect:[self.beginImage extent]];</p>
-
-<p>  CIFilter *composite = [CIFilter filterWithName:@&ldquo;CIHardLightBlendMode&rdquo;];
-  [composite setValue:sepia.outputImage forKey:kCIInputImageKey];
-  [composite setValue:croppedImage forKey:kCIInputBackgroundImageKey];</p>
-
-<p>  CIFilter *vignette = [CIFilter filterWithName:@&ldquo;CIVignette&rdquo;];
-  [vignette setValue:composite.outputImage forKey:kCIInputImageKey];
-  [vignette setValue:@(intensity * 2) forKey:@&ldquo;inputIntensity&rdquo;];
-  [vignette setValue:@(intensity * 30) forKey:@&ldquo;inputRadius&rdquo;];</p>
-
-<p>  UIImage *filteredImage = [self imageWithCIImage:vignette.outputImage];</p>
-
-<p>  return filteredImage;
-}
-```</p></li>
-</ul>
-
-
-<p>这段代码实现了初始化和图片滤镜功能。详细解释上述代码的功能已经超出了本教程的范围，你可以从<a href="http://www.raywenderlich.com/22167/beginning-core-image-in-ios-6">Core Image Tutorial</a>中了解到更多的关于 Core Image 和滤镜的知识。</p>
-
-<p>到这里，你已经有了一个静态库，它有一个暴露了以下3个方法的公开类<code>ImageFilters</code>:</p>
-
-<ul>
-<li><code>initWithImage</code> : 初始化滤镜类</li>
-<li><code>grayScaleImage</code> : 创建灰阶图片</li>
-<li><code>oldImageWithIntensity</code> : 创建怀旧效果的图片</li>
-</ul>
-
-
-<p>现在构建并运行你的库。你会注意到Xcode的"Run"按钮只是执行了一次构建，而并不能真正的运行库去查看效果，因为并没有真正的应用。</p>
-
-<p>静态库的后缀名是<code>.a</code>而并不是一个<code>.app</code>或者<code>.ipa</code>文件。可以在工程导航栏中的<code>Products</code>文件夹下找到生成的静态库。右键点击<code>libImageFilters.a</code>并在弹出菜单中选择<code>Show in Finder</code>。</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-03.png" title="Show in Finder" alt="Show in Finder" /></p>
-
-<p>Xcode会在Finder中打开文件夹，你可以看到以下类似的结构:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-04.png" title="Lib Structure" alt="Lib Structure" /></p>
-
-<p>离完成一个库产品还剩两件事:</p>
-
-<ul>
-<li><strong>Header files</strong> : 在<code>include</code>文件夹中可以找到库的所有公开头文件。在该示例中，只有一个公开类所以文件夹中只有一个<code>ImageFilters.h</code>文件。稍后你会在你的应用工程中用到这个头文件以便于Xcode在编译期识别暴露的类。</li>
-<li><strong>Binary Libraty</strong> : Xcode生成的静态库是<code>ImageFilters.a</code>。想在应用中使用该库，你需要用该文件链接。</li>
-</ul>
-
-
-<p>这两个部分和你想在应用里包含一些新的框架时所需要做的事很相似，简单的导入框架头文件并建立链接。</p>
-
-<p>库已经准备就绪，需要附加说明的是，默认情况下，库文件只会为当前的架构构建。如果你在模拟器下构建，那么库会包含对应i386架构的结果代码；如果在真机设备下构建，你将会得到对应ARM架构的代码。你可能需要构建两个版本的库，并且当从模拟器切换到设备的时候选择其中一个使用。</p>
-
-<p>怎么办？</p>
-
-<p>幸运的是，有一个更好的办法可以不建立多个配置或在工程中构建产品就可以支持多个平台。你可以创建一个对应 <em>2个</em> 架构的包含结果代码的<code>universal binary</code>。</p>
-
-<h2>通用二进制</h2>
-
-<p>通用二进制是一种特殊的二进制文件，它包含对应多个架构的结果代码。你可能在从PowerPC(PPC)到Inter(i386)的Mac电脑产品线的过渡中对其有所熟悉。在这个过程中，Mac应用程序通常迁移为包含 <em>2个</em> 可执行包的一个二进制文件，这样应用程序即能在Inter也能在PowerPC的Mac电脑上运行。</p>
-
-<p>同时支持ARM和i386的概念并没有太大不同。在这里静态库要包含支持iOS设备(ARM)和模拟器(i386)的结果代码。Xcode可以识别通用库，每次你构建应用的时候，它会根据目标选择适当的架构。</p>
-
-<p>为了创建通用二进制库，需要使用一个名为<a href="https://developer.apple.com/library/mac/documentation/darwin/reference/manpages/man1/lipo.1.html">lipo</a>的系统工具。</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-05.jpg" title="Lipo Cat" alt="Lipo Cat" /></p>
-
-<p>别担心宝贝，不是那种lipo! :] (lipo有脂肪的意思 &mdash; 译者注)</p>
-
-<p><strong>lipo</strong>是一个命令行工具，它允许在通用文件上执行操作(类似于创建通用二进制, 列出通用文件内容等等)。本教程中使用<strong>lipo</strong>的目的是联合不同架构的二进制文件到单个输出文件中。你可以直接在命令行中使用<strong>lipo</strong>命令，但在本教程中你可以让Xcode执行一段创建通用库的命令行脚本来为你做这件事。</p>
-
-<p>Xcode中一个集合目标可以一次构建多个目标，包括命令行脚本。在Xcode菜单中选择<code>File/New/Target</code>，选择<code>iOS/Other</code>并点击<code>Aggregate</code>，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-06.png" title="Aggregate Target" alt="Aggregate Target" /></p>
-
-<p>将目标命名为<code>UniversalLib</code>，确保选中<code>ImageFilters</code>工程，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-07.png" title="Aggregate Universal" alt="Aggregate Universal" /></p>
-
-<p>在工程导航视图中选中<code>ImageFilters</code>，然后选择<code>UniversalLib</code>目标。切换到<code>Build Phases</code>标签；在这里设置构建目标时将要执行的动作。</p>
-
-<p>点击<code>Add Build Phase</code>按钮，在弹出的菜单中选择<code>Add Run Script</code>，如下图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-08.png" title="Aggregate Phase" alt="Aggregate Phase" /></p>
-
-<p>现在你需要设置脚本项。展开<code>Run Script</code>模块，在<code>Shell</code>行下粘贴如下代码:</p>
-
-<p>```sh</p>
-
-<h1>define output folder environment variable</h1>
-
-<p>UNIVERSAL_OUTPUTFOLDER=${BUILD_DIR}/${CONFIGURATION}-universal</p>
-
-<h1>Step 1. Build Device and Simulator versions</h1>
-
-<p>xcodebuild -target ImageFilters ONLY_ACTIVE_ARCH=NO -configuration ${CONFIGURATION} -sdk iphoneos  BUILD_DIR=&ldquo;${BUILD_DIR}&rdquo; BUILD_ROOT=&ldquo;${BUILD_ROOT}&rdquo;
-xcodebuild -target ImageFilters -configuration ${CONFIGURATION} -sdk iphonesimulator -arch i386 BUILD_DIR=&ldquo;${BUILD_DIR}&rdquo; BUILD_ROOT=&ldquo;${BUILD_ROOT}&rdquo;</p>
-
-<h1>make sure the output directory exists</h1>
-
-<p>mkdir -p &ldquo;${UNIVERSAL_OUTPUTFOLDER}&rdquo;</p>
-
-<h1>Step 2. Create universal binary file using lipo</h1>
-
-<p>lipo -create -output &ldquo;${UNIVERSAL_OUTPUTFOLDER}/lib${PROJECT_NAME}.a&rdquo; &ldquo;${BUILD_DIR}/${CONFIGURATION}-iphoneos/lib${PROJECT_NAME}.a&rdquo; &ldquo;${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/lib${PROJECT_NAME}.a&rdquo;</p>
-
-<h1>Last touch. copy the header files. Just for convenience</h1>
-
-<p>cp -R &ldquo;${BUILD_DIR}/${CONFIGURATION}-iphoneos/include&rdquo; &ldquo;${UNIVERSAL_OUTPUTFOLDER}/&rdquo;
-```</p>
-
-<p>代码并不十分复杂，它是这样工作的:</p>
-
-<ul>
-<li><strong>UNIVERSAL_OUTPUTFOLDER</strong> 包括了通用二进制包将要被存放的文件夹:&ldquo;Debug-universal&rdquo;</li>
-<li><strong>Step 1.</strong> 第2行执行了<code>xcodebuild</code>并命令它构建ARM架构的二进制文件。(你可以看到这行中的<code>-sdk iphoneos</code>参数)</li>
-<li>下一行再次执行了<code>xcodebuild</code>命令并在另一个文件夹中构建了一个针对Inter架构的iPhone模拟器的二进制文件，在这里关键参数是<code>-sdk iphonesimulator -arch i386</code>。(如果感兴趣，你可以在<a href="http://developer.apple.com/documentation/Darwin/Reference/ManPages/man1/xcodebuild.1.html">man page</a>了解更多关于xcodebuild的资料)</li>
-<li><strong>Step 2.</strong> 现在已经有了2个.a文件分别对应两个架构。执行<code>lipo -create</code>，用它们创建出一个通用二进制。</li>
-<li>最后一行的作用是复制头文件到通用构建文件夹的外层。(用<code>cp</code>命令)</li>
-</ul>
-
-
-<p>你的Run Script窗口应该看起来如下:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-09.png" title="Aggregate Script" alt="Aggregate Script" /></p>
-
-<p>现在你已经准备好构建一个静态库的通用版本。在方案下啦菜单中选择集合目标<code>UniversalLib</code>，如下(不像截图上的"iOS Device"，你看到的可能是自己的设备名字):</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-10.png" title="Aggregate Scheme" alt="Aggregate Scheme" /></p>
-
-<p>点击<code>Play</code>按钮来为集合方案构建目标。</p>
-
-<p>在<code>libImageFilters.a</code>上再次选择<code>Show in Finder</code>查看结果。将Finder切换到列视图查看文件夹层次，可以看到一个包含库的通用版本的叫做<code>Debug-Universal</code>的新文件夹(或<code>Release-Universal</code>如果你构建了发布版本)，如下图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-11.png" title="St Finder" alt="St Finder" /></p>
-
-<p>除了这个链接到模拟器和真实设备的二进制文件，你还可以找到普通的头文件和静态库文件。</p>
-
-<p>这是你创建自己的通用静态库所需要学习的所有知识。</p>
-
-<p>概括起来，一个静态库工程和一个应用工程非常相似。可以拥有一个或多个类，最后的产品是头文件和一个.a文件。这个.a文件就是可以链接到多个应用程序中的静态库。</p>
-
-<h2>在应用中使用静态库</h2>
-
-<p>在应用中使用<code>ImageFilters</code>类和直接使用源代码并没有太大区别:导入头文件然后开始使用类。问题是Xcode并不知道头文件和库文件的位置。</p>
-
-<p>有两种办法可以将静态库引入到工程中:</p>
-
-<ul>
-<li><strong>方法 1:</strong> 直接引用头文件和库二进制文件(.a)</li>
-<li><strong>方法 2:</strong> 将库工程作为子项目</li>
-</ul>
-
-
-<p>选择哪一种方法完全取决于你的喜好或者是否有静态库的源代码和工程配置文件任由你支配。</p>
-
-<p>本教程将分别介绍两种方法。你可以自由尝试第一个或第二个，但推荐按照文中介绍的顺序分别尝试两个。在两个部分的开头，需要一个zip文件，该文件是在<a href="http://www.raywenderlich.com/22167/beginning-core-image-in-ios-6">Core Image Tutorial</a>中创建的应用的修改版本，修改后的版本使用了库中新的<code>ImageFilters</code>类。</p>
-
-<p>本教程的主要目的是教你如何使用静态库，所以修改后的工程包括了所有应用需要的源代码。这样你就可以将注意力集中在使用库所需要的工程设置上。</p>
-
-<h2>方法 1: 头文件和库二进制文件</h2>
-
-<p>在本节中，你需要下载<a href="http://cdn2.raywenderlich.com/wp-content/uploads/2013/07/CoreImageFun.staticlib.zip">starter project for this section</a>。复制压缩文件到硬盘上的任意文件夹并解压。可以看到如下的文件夹结构:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-12.png" title="Lib File Tree" alt="Lib File Tree" /></p>
-
-<p>为了方便起见，.a通用库文件和头文件已经复制了一份在其中，但工程并未设置使用它们。你将从这里开始。</p>
-
-<blockquote><p>注意: 标准的Unix引入惯例是一个<code>include</code>文件夹，用来存放头文件，一个<code>lib</code>文件夹用来存放库文件(.a)。这种文件夹结构这是一种惯例，并不强制。你并不需要一定遵从这种结构或者复制文件到工程文件夹中。在你自己的应用中，你可以任意选择头文件和库文件的位置，只要随后在Xcode工程中设置了适当的路径。</p></blockquote>
-
-<p>打开工程，构建并运行你的应用，将会看到以下错误:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-13.png" title="Lib Error Include" alt="Lib Error Include" /></p>
-
-<p>正如所期望的那样，应用并不知道去哪里寻找头文件。为了解决这个问题，你需要在工程中添加一个<code>Header Search Path</code>，指明头文件存放的位置。设置头文件搜索路径始终是使用静态库的第一步。</p>
-
-<p>按照下图示范，在导航栏中点击工程根节点(1)，选择<code>CoreImageFun</code>目标(2)。选择<code>Build Settings</code>(3)，在列表中找出<code>Header Search Paths</code>设置项。如果必要，可以在搜索框中输入"header search"来过滤庞大的设置列表(4)。</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-14.png" title="Lib Header Search" alt="Lib Header Search" /></p>
-
-<p>双击<code>Header Search Paths</code>项，弹出一个浮动窗口，点击<code>+</code>按钮，输入:</p>
-
-<p><code>
-$SOURCE_ROOT/include
-</code></p>
-
-<p>弹出窗口应该如下所示:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-15.png" title="Lib Header Search" alt="Lib Header Search" /></p>
-
-<p><strong>$SOURCE_ROOT</strong>是一个Xcode环境变量，指向工程根文件夹。Xcode会使用包含你工程的实际文件夹代替此变量，这意味着即使你把工程移动到其它文件夹或驱动器，它仍然可以指向最新的位置。</p>
-
-<p>在弹出窗口范围外点击鼠标使其消失，你会看到Xcode已经自动将变量转换为工程的实际位置，如图所示:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-16.png" title="Lib Header Search" alt="Lib Header Search" /></p>
-
-<p>构建并运行应用，看看结果是什么。呃……一些链接错误出现了:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-17.png" title="Lib Header Search" alt="Lib Header Search" /></p>
-
-<p>这看起来并不是很好，但是给了你另一个你所需要的信息。仔细看，会发现所有的编译错误全都消失了，全部被链接错误所代替。这表示Xcode找到了头文件并且用它去编译应用，但在链接阶段，Xcode无法找到<code>ImageFilter</code>类的结果代码。为什么？</p>
-
-<p>很简单 &mdash; 你还没有告诉Xcode去哪里寻找包含类实现的库文件。(看，没什么大不了)</p>
-
-<p>如下面的屏幕截图所示，回到<code>CoreImageFun</code>目标(2)的构建设置(1)。选择<code>Build Phases</code>标签(3)，展开<code>Link Binary With Libraries</code>部分(4)。最后，点击<code>+</code>按钮(5)。</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-18.png" title="Lib Link" alt="Lib Link" /></p>
-
-<p>在出现的窗口中，点击<code>Add Other…</code>按钮，在工程根文件夹下的<code>lib</code>子目录中找到<code>libImageFilters.a</code>库文件，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-19.png" title="Lib Link" alt="Lib Link" /></p>
-
-<p>完成这些以后，你的Build Phase标签看起来如下:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-20.png" title="Lib Link" alt="Lib Link" /></p>
-
-<p>最后一步是增加<code>-ObjC</code>链接标识。该链接尝试更高效的只包含需要的代码，而有时会排除静态库代码。使用该标识，库中的所有Objective-C类和类别都将被适当的加载。你可以从苹果的<a href="http://developer.apple.com/library/mac/#qa/qa1490/_index.html">Technical Q&amp;A QA1490</a>了解详细信息。</p>
-
-<p>点击<code>Build Settings</code>标签，找到<code>Other linker Flags</code>设置，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-21.png" title="OBJC Flag" alt="OBJC Flag" /></p>
-
-<p>在弹出窗口中，点击<code>+</code>按钮并输入<code>-ObjC</code>，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-22.png" title="OBJC Flag" alt="OBJC Flag" /></p>
-
-<p>最后构建并运行应用，此时应该不会得到任何构建错误信息，应用顺利展示它的光彩之处:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-23.png" title="App" alt="App" /></p>
-
-<p>拖动滑块改变滤镜级别，或者点击GrayScale按钮。对图片应用滤镜的代码来自于静态库，而不是应用。</p>
-
-<p>恭喜 &mdash; 你已经构建了你的第一个静态库并在一个真正的应用里使用它!你会发现这种包含头文件和库的方法在很多第三方库中使用，如AdMob，TestFlight或一些不提供源代码的商业库。</p>
-
-<h2>方法 2: 子项目</h2>
-
-<p>在这部分，请在<a href="http://cdn1.raywenderlich.com/wp-content/uploads/2013/07/CoreImageFun.subproject.zip">这里</a>下载所需工程。</p>
-
-<p>复制下载的文件到任意位置，解压。可以看到以下文件夹结构:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-24.png" title="Subproject Structure" alt="Subproject Structure" /></p>
-
-<p>如果学习了方法一，你可能注意到了工程的差异。这个工程里没有任何的头文件和静态库文件 &mdash; 因为根本不需要。作为替代方案，你要将你在本教程开始创建的<code>ImageFilters</code>库工程添作为依赖加到本工程中。</p>
-
-<p>在做这些之前，构建并运行应用。会看到以下错误:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-25.png" title="Lib Error Include" alt="Lib Error Include" /></p>
-
-<p>如果学习过上一个方法，你已经知道如何修复这个问题。在示例工程中，你在<code>ViewController</code>类中使用了<code>ImageFilters</code>类，但并未告诉Xcode去哪里寻找头文件。Xcode会尝试寻找<code>ImageFilters.h</code>文件，但是失败了。</p>
-
-<p>将<code>ImageFilters</code>库工程作为子项目所需的所有操作就是拖拽库工程文件到库文件树中。如果该工程已经在另一个Xcode窗口中被打开，那么Xcode无法正确将其添加为子工程。所以在继续本教程之前，确保<code>ImageFilters</code>库工程已经被关闭。</p>
-
-<p>在Finder中找到名为<code>ImageFilters.xcodeproj</code>库工程文件。拖拽它到<code>CoreImageFun</code>工程左侧的导航栏中，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-26.png" title="Subproject Drag" alt="Subproject Drag" /></p>
-
-<p>完成拖放后，你的工程浏览视图应该如下图所示:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-27.png" title="Subproject Drag" alt="Subproject Drag" /></p>
-
-<p>现在Xcode已经识别了子工程，你可以将库添加为工程依赖。这样Xcode就可以在构建主应用之前确保库为最新版本。</p>
-
-<p>点击工程文件(1)，选择<code>CoreImageFun</code>目标(2)。点击<code>Build Phases</code>标签(3)并展开<code>Target Dependencies</code>(4)，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-28.png" title="Dependencies" alt="Dependencies" /></p>
-
-<p>点击<code>+</code>按钮增加一个新依赖。如下图所示，确保你从弹出窗口中选择了<code>ImageFilters</code>目标(不是<code>universalLib</code>):</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-29.png" title="Dependency" alt="Dependency" /></p>
-
-<p>添加完成之后，依赖窗口应该如图所示:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-30.png" title="Dependency" alt="Dependency" /></p>
-
-<p>最后，设置静态库工程链接到应用。展开<code>Link Binary with libraries</code>，点击<code>+</code>按钮，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-31.png" title="Subproject Link" alt="Subproject Link" /></p>
-
-<p>选择<code>libImageFilters.a</code>，点击<code>Add</code>:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-32.png" title="Subproject Link" alt="Subproject Link" /></p>
-
-<p>添加库之后，<code>Link Binary with Libraries</code>部分应该如图所示:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-33.png" title="Subproject Link" alt="Subproject Link" /></p>
-
-<p>像方法一那样，最后一步是增加<code>-ObjC</code>链接标识。点击<code>Build Settings</code>标签，找到<code>Other linker Flags</code>设置，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-34.png" title="OBJC Flag" alt="OBJC Flag" /></p>
-
-<p>在弹出窗口中，点击<code>+</code>按钮并输入<code>-ObjC</code>，如图:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-35.png" title="OBJC Flag" alt="OBJC Flag" /></p>
-
-<p>构建并运行应用，应该没有任何错误，应用会再一次被打开:</p>
-
-<p><img src="/images/posts/2013-11-30-creating-a-static-library-in-ios-tutorial-36.png" title="App" alt="App" /></p>
-
-<p>拖动滑块或者点击GrayScale按钮查看图片滤镜结果。滤镜逻辑的代码完全包含在库中。</p>
-
-<p>如果按照第一种方法在应用中添加库(使用头文件和库文件)，你可能注意到和第二种方法的区别。在方法二中，你没有在工程设置中添加任何头文件搜索路径。另一个区别是你没有使用通用库。</p>
-
-<p>为什么会有这样的区别？当添加一个库作为一个子工程，Xcode会为你考虑几乎所有的事情。添加子工程和依赖后，Xcode知道去哪里寻找头文件和二进制文件，也知道根据你的设置去选择哪需要构建哪一个架构的库。这非常方便。</p>
-
-<p>如果你使用你自己的库或者拥有源代码和工程文件，将库作为子工程不失为一个引入静态库的简便的方法。让你更容易作为工程依赖构建整合，并担心更少的事情。</p>
-
-<h2>未来</h2>
-
-<p>你可以从<a href="http://cdn5.raywenderlich.com/wp-content/uploads/2013/07/Staticlibrary.fullsource.zip">这里</a>下载到包括了本教程所有代码的工程。</p>
-
-<p>希望本教程能够让你对静态库的基本概念和怎样在应用中使用它们有一个更深入的了解。</p>
-
-<p>下一步就是用所学到的知识构建你自己的库了。你肯定有一些添加到工程中通用类。它们是你加入你自己的可复用库的优秀候选人。你也可以考虑根据功能创建多个库:网络部分的代码作为一个，UI部分作为另一个，等等。你可以只向工程中添加所需要的代码。</p>
-
-<p>为了强化和深入探讨你在本教程中所学到的概念，我推荐苹果的文档<a href="http://developer.apple.com/library/ios/#technotes/iOSStaticLibraries/Introduction.html">Introduction to Using Static Libraries in iOS</a>。</p>
-
-<p>希望你喜欢本教程，如果你有任何问题或评论，请在下面的讨论区中讨论。</p>
 ]]></content>
   </entry>
   
