@@ -6,6 +6,8 @@ comments: true
 categories: iOS iBeacon 翻译
 ---
 
+本文由 [**Migrant**](http://objcio.com) 翻译自 [Can you Smell the iBeacon?](http://www.cocoanetics.com/2013/11/can-you-smell-the-ibeacon/)，转载请注明出处。
+
 虽然我们还未看到任何实际生活中的使用案例，但 iBeacon 绝对是 iOS 7 带来的最热门的新话题之一。
 
 上周我收到了我的 [Developer Preview Kit from Estimote](https://preorder.estimote.com/)，为了将其收入我正在写作的新书中，我开始研究 iBeacon。下面是我的发现。
