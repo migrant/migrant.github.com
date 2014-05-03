@@ -4,7 +4,7 @@
   <title><![CDATA[Migrant]]></title>
   <link href="http://objcio.com/atom.xml" rel="self"/>
   <link href="http://objcio.com/"/>
-  <updated>2014-05-03T14:50:59+08:00</updated>
+  <updated>2014-05-03T14:58:26+08:00</updated>
   <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
@@ -18,7 +18,9 @@
     <link href="http://objcio.com/blog/2014/05/01/can-you-smell-the-ibeacon/"/>
     <updated>2014-05-01T22:36:00+08:00</updated>
     <id>http://objcio.com/blog/2014/05/01/can-you-smell-the-ibeacon</id>
-    <content type="html"><![CDATA[<p>虽然我们还未看到任何实际生活中的使用案例，但 iBeacon 绝对是 iOS 7 带来的最热门的新话题之一。</p>
+    <content type="html"><![CDATA[<p>本文由 <a href="http://objcio.com"><strong>Migrant</strong></a> 翻译自 <a href="http://www.cocoanetics.com/2013/11/can-you-smell-the-ibeacon/">Can you Smell the iBeacon?</a>，转载请注明出处。</p>
+
+<p>虽然我们还未看到任何实际生活中的使用案例，但 iBeacon 绝对是 iOS 7 带来的最热门的新话题之一。</p>
 
 <p>上周我收到了我的 <a href="https://preorder.estimote.com/">Developer Preview Kit from Estimote</a>，为了将其收入我正在写作的新书中，我开始研究 iBeacon。下面是我的发现。</p>
 
