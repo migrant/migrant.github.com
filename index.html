@@ -9,7 +9,7 @@
 	<meta name="author" content="Migrant">
 
 	
-	<meta name="description" content="May 1st, 2014 iBeacon, iOS, 翻译 Comments iBeacon 来了 本文由 Migrant 翻译自 Can you Smell the iBeacon?，转载请注明出处。 虽然我们还未看到任何实际生活中的使用案例，但 iBeacon 绝对是 iOS 7 &hellip;">
+	<meta name="description" content="May 21st, 2014 iOS, 翻译 Comments 自定义 URL Scheme 完全指南 本文由 Migrant 翻译自 The Complete Tutorial on iOS/iPhone Custom URL Schemes，转载请注明出处。 注意: 自从自定义 URL &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -88,6 +88,84 @@
 			<div class="mid-col-container">
 				<div id="content" class="inner">
 <div itemscope itemtype="http://schema.org/Blog">
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-05-21T11:25:00+08:00" data-updated="true" itemprop="datePublished">May 21<span>st</span>, 2014</time></div>
+		<div class="tags">
+
+
+	<a class='category' href='/blog/categories/ios/'>iOS</a>, <a class='category' href='/blog/categories/fan-yi/'>翻译</a>
+
+
+</div>
+		
+			<span class="comments"><a href="/blog/2014/05/21/the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes/#disqus_thread">Comments</a></span>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/blog/2014/05/21/the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes/" itemprop="url">自定义 URL Scheme 完全指南</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<p>本文由 <a href="http://objcio.com"><strong>Migrant</strong></a> 翻译自 <a href="http://iosdevelopertips.com/cocoa/launching-your-own-application-via-a-custom-url-scheme.html">The Complete Tutorial on iOS/iPhone Custom URL Schemes</a>，转载请注明出处。</p>
+
+<p><strong>注意</strong>: <em>自从自定义 URL 的引入，本文始终是我博客中阅读量最大的文章。虽然大多数都相同，但仍然有一些细微差别的变化。本文是原帖的重写版，更新为最新的 iOS 和 Xcode 版本。</em></p>
+
+<p>iPhone / iOS SDK 最酷的特性之一就是应用将其自身&#8221;绑定&#8221;到一个自定义 URL scheme 上，该 scheme 用于从浏览器或其他应用中启动本应用。</p>
+
+<h2>注册自定义 URL Scheme</h2>
+
+<p>注册自定义 URL Scheme 的第一步是创建 URL Scheme &mdash; 在 Xcode Project Navigator 中找到并点击工程 info.plist 文件。当该文件显示在右边窗口，在列表上点击鼠标右键，选择 <em>Add Row</em>:</p>
+
+<p>向下滚动弹出的列表并选择 <em>URL types</em>。</p>
+
+<p><img src="/images/posts/2014-05-21-the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes-01.gif" alt="iOS Custom URL Scheme" /></p>
+
+<p>点击左边剪头打开列表，可以看到 <em>Item 0</em>，一个字典实体。展开 <em>Item 0</em>，可以看到 <em>URL Identifier</em>，一个字符串对象。该字符串是你自定义的 URL scheme 的名字。建议采用反转域名的方法保证该名字的唯一性，比如 <em>com.yourCompany.yourApp</em>。</p>
+
+<p><img src="/images/posts/2014-05-21-the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes-02.gif" alt="urlScheme2a" /></p>
+
+<p>点击 <em>Item 0</em> 新增一行，从下拉列表中选择 <em>URL Schemes</em>，敲击键盘回车键完成插入。</p>
+
+<p><img src="/images/posts/2014-05-21-the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes-03.gif" alt="iOS Custom URL Scheme" /></p>
+
+<p>注意 URL Schemes 是一个数组，允许应用定义多个 URL schemes。</p>
+
+<p><img src="/images/posts/2014-05-21-the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes-04.gif" alt="iOS Custom URL Scheme" /></p>
+
+<p>展开该数据并点击 <em>Item 0</em>。你将在这里定义自定义 URL scheme 的名字。只需要名字，不要在后面追加 :// &mdash; 比如，如果你输入 iOSDevApp，你的自定义 url 就是 iOSDevApp://</p>
+
+<p><img src="/images/posts/2014-05-21-the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes-05.gif" alt="iOS Custom URL Scheme" /></p>
+
+<p>此时，整个定义如下图:</p>
+
+<p><img src="/images/posts/2014-05-21-the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes-06.gif" alt="iOS Custom URL Scheme" /></p>
+
+<p>虽然我赞同 Xcode 使用描述性的名字的目的，不过看到创建的实际的 key 也是非常有用的。这里有一个方便的技巧，右键点击 plist 并选择 <em>Show Raw Keys/Values</em>，就能看到以下效果:</p>
+
+<p><img src="/images/posts/2014-05-21-the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes-07.png" alt="iOS Custom URL Scheme" /></p>
+
+<p>还有另一种有用的输出格式，XML，因为可以非常容易的看到字典和原始数组及其包括的实体的结构。点击 plist 并选择 <em>Open As &ndash; Source Code</em>:</p>
+
+<p><img src="/images/posts/2014-05-21-the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes-08.gif" alt="iPhone Custom URL Scheme" /></p>
+
+
+		
+		<a href="/blog/2014/05/21/the-complete-tutorial-on-ios-slash-iphone-custom-url-schemes/" class="more-link">Read on &rarr;</a>
+	</div>
+
+</article>
 
 
     <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
