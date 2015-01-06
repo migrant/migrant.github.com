@@ -4,7 +4,7 @@
   <title><![CDATA[Migrant]]></title>
   <link href="http://objcio.com/atom.xml" rel="self"/>
   <link href="http://objcio.com/"/>
-  <updated>2014-11-26T11:21:11+08:00</updated>
+  <updated>2015-01-06T13:28:42+08:00</updated>
   <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
@@ -12,6 +12,1189 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[DTrace]]></title>
+    <link href="http://objcio.com/blog/2015/01/06/dtrace/"/>
+    <updated>2015-01-06T12:10:00+08:00</updated>
+    <id>http://objcio.com/blog/2015/01/06/dtrace</id>
+    <content type="html"><![CDATA[<p>本文由 <a href="http://objcio.com"><strong>Migrant</strong></a> 翻译自 <a href="http://www.objc.io/issue-19/dtrace.html">DTrace</a>，感谢 <a href="http://onevcat.com/">onevcat</a> 校对，转载请注明出处。本文亦被收录于 <a href="http://objccn.io/">objc中国</a>。</p>
+
+<p>很少有人听过 DTrace，它是隐藏在 OS 中的小宝藏。DTrace 是强大的 debug 工具 &ndash; 因为它拥有极其灵活的特性，并且因为与其它工具差异很大而可能相对不那么有名。</p>
+
+<p>许多时候你的 app 的真正的用户或测试人员会看到一些意外的行为。DTrace 可以让你无需重启 app 就能够在生产版本上回答关于 app 的任何问题。</p>
+
+<!--more-->
+
+
+<h2>动态追踪</h2>
+
+<p>大概 10 年前，<a href="https://en.wikipedia.org/wiki/Sun_Microsystems">Sun Microsystems</a> 创建了 DTrace，它的名字是 <em>Dynamic Trace</em> 的缩写。2007 年底，苹果公司将它集成在自己的 <a href="https://en.wikipedia.org/wiki/Mac_OS_X_Leopard">操作系统</a> 中。</p>
+
+<p>DTrace 是一个提供了 <em>zero disable cost</em> 的动态追踪框架，也就是说当代码中的探针关闭时，不会有额外的资源消耗 &ndash; 即使在生产版本中我们也可以将探针留在代码中。只有使用的时候才产生消耗。</p>
+
+<p>DTrace 是<strong>动态的</strong>，也就是说我们可以将它附加在一个已经在运行的程序上，也可以不打断程序将它剥离。不需要重新编译或启动。</p>
+
+<p>本文我们将重点介绍如何使用 DTrace 检查我们的程序，但值得注意的是 DTrace 是系统级的: 例如，一个单独的脚本可以观察到系统中<strong>所有</strong>进程的内存分配操作。可以查看 <code>/usr/share/examples/DTTk</code> 来深入了解一些非常好的例子。</p>
+
+<h3>OS X vs. iOS</h3>
+
+<p>正如你现在可能已经猜到的，DTrace 只能在 OS X 上运行。苹果也在 iOS 上使用 DTrace，用以支持像 Instruments 这样的工具，但对于第三方开发者，DTrace 只能运行于 OS X 或 iOS 模拟器。</p>
+
+<p>在 <a href="https://www.wire.com">Wire</a>，即使我们被限制仅能在 iOS 模拟器上使用 DTrace，它也在 iOS 开发中非常有用。如果你读到本文并且认为在 iOS 设备上支持 DTrace 是个好提议，请提交 <a href="https://bugreport.apple.com/">enhancement request</a> 给苹果。</p>
+
+<h3>探针和脚本</h3>
+
+<p>DTrace 有两部分：DTrace 探针，及附加在上面的 DTrace 脚本。</p>
+
+<h4>探针</h4>
+
+<p>你可以将内置 (所谓静态的) 探针加入代码中。IA 探针看起来和普通的 C 函数非常相似。在 Wire，我们的同步代码有一个内部状态机器，我们定义了如下两个探针：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>provider syncengine_sync {
+</span><span class='line'>    probe strategy_go_to_state(int);
+</span><span class='line'>}   </span></code></pre></td></tr></table></div></figure>
+
+
+<p>探针被分组成所谓的 <em>providers</em>。参数 <code>int</code> 是正要进入的状态。在我们的 Objective-C (或 Swift) 代码中，简单的插入以下代码即可：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">goToState:</span><span class="p">(</span><span class="n">ZMSyncState</span> <span class="o">*</span><span class="p">)</span><span class="nv">state</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">currentState</span> <span class="n">didLeaveState</span><span class="p">];</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">currentState</span> <span class="o">=</span> <span class="n">state</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE</span><span class="p">(</span><span class="n">state</span><span class="p">.</span><span class="n">identifier</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">currentState</span> <span class="n">didEnterState</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们<a href="#staticProbes">后面</a>会讨论如何整合并且把流程说清楚一些。</p>
+
+<h4>脚本</h4>
+
+<p>现在我们可以编写一个 DTrace 小脚本来展示状态转变：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">syncengine_sync</span><span class="o">*:::</span><span class="n">strategy_go_to_state</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Transitioning to state %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">arg0</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>(<a href="#DProgrammingLanguage">后面</a>我们会详细展示 DTrace 脚本如何工作。)</p>
+
+<p>如果将 DTrace 保存进 <code>state.d</code>，接下来我们可以使用 <a href="https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/dtrace.1.html" title="dtrace - generic front-end to the DTrace facility"><code>dtrace(1)</code> 命令行工具</a> 来运行它：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="o">%</span> <span class="n">sudo</span> <span class="n">dtrace</span> <span class="o">-</span><span class="n">q</span> <span class="o">-</span><span class="n">s</span> <span class="n">state</span><span class="p">.</span><span class="n">d</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们可以看到:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">Transitioning</span> <span class="n">to</span> <span class="n">state</span> <span class="mi">1</span>
+</span><span class='line'><span class="n">Transitioning</span> <span class="n">to</span> <span class="n">state</span> <span class="mi">2</span>
+</span><span class='line'><span class="n">Transitioning</span> <span class="n">to</span> <span class="n">state</span> <span class="mi">5</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>正如我们所预期的，并没什么让人激动的。最后使用 <code>^C</code> 可以退出 DTrace。</p>
+
+<p><a name="ATimingExample"></a></p>
+
+<h3>一个定时例子</h3>
+
+<p>因为 DTrace 消耗非常小，所以非常适合用来测试性能 &ndash; 即使需要测试的时间非常短。DTrace 中的时间单位是纳秒。</p>
+
+<p>如果扩展上面的小例子，我们可以输出每个状态所花费的时间:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">uint64_t</span> <span class="n">last_state</span><span class="p">;</span>
+</span><span class='line'><span class="n">uint64_t</span> <span class="n">last_state_timestamp</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">dtrace</span><span class="o">:::</span><span class="n">BEGIN</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">syncState</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;EventProcessing&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">syncState</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;QuickSync1&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">syncState</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;QuickSync2&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">syncengine_sync</span><span class="o">*:::</span><span class="n">strategy_go_to_state</span>
+</span><span class='line'><span class="o">/</span> <span class="n">last_state_timestamp</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">t</span> <span class="o">=</span> <span class="p">(</span><span class="n">walltimestamp</span> <span class="o">-</span> <span class="n">last_state_timestamp</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1000000</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Spent %d ms in state %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">syncState</span><span class="p">[</span><span class="n">last_state</span><span class="p">]);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">syncengine_sync</span><span class="o">*:::</span><span class="n">strategy_go_to_state</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Transitioning to state %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">syncState</span><span class="p">[</span><span class="n">arg0</span><span class="p">]);</span>
+</span><span class='line'>    <span class="n">last_state</span> <span class="o">=</span> <span class="n">arg0</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">last_state_timestamp</span> <span class="o">=</span> <span class="n">walltimestamp</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这些代码会输出:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">Transitioning</span> <span class="n">to</span> <span class="n">state</span> <span class="n">QuickSync1</span>
+</span><span class='line'><span class="n">Spent</span> <span class="mi">2205</span> <span class="n">ms</span> <span class="k">in</span> <span class="n">state</span> <span class="n">QuickSync1</span>
+</span><span class='line'><span class="n">Transitioning</span> <span class="n">to</span> <span class="n">state</span> <span class="n">QuickSync2</span>
+</span><span class='line'><span class="n">Spent</span> <span class="mi">115</span> <span class="n">ms</span> <span class="k">in</span> <span class="n">state</span> <span class="n">QuickSync2</span>
+</span><span class='line'><span class="n">Transitioning</span> <span class="n">to</span> <span class="n">state</span> <span class="n">EventProcessing</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>脚本中有些新东西。<code>dtrace:::BEGIN</code> 语句在脚本开始时运行。脚本退出时有一个相应的 <code>END</code>。</p>
+
+<p>我们还给第一个探针增加了一个断言 (predicate)，<code>/ last_state_timestamp != 0 /</code>。</p>
+
+<p>最后我们使用全局变量来追踪最后的状态，以及什么时候进入该状态。</p>
+
+<p>内置的 <code>walltimestamp</code> 变量返回当前时间相对于 Unix epoch 时间以来的纳秒数。</p>
+
+<p>还有一个虚拟的单位为纳秒的时间戳变量，<code>vtimestamp</code>。它表示当前的线程在 CPU 上运行的时间减去在 DTrace 上花费的时间。最后，<code>machtimestamp</code> 对应 <code>mach_absolute_time()</code>。</p>
+
+<p>对于上面的脚本，执行的顺序非常重要。我们有两个所谓的<strong>语句</strong>对应同一个探针，(<code>syncengine_sync*:::strategy_go_to_state</code>)。它们会按照在 D 程序中出现的顺序执行。</p>
+
+<h3>结合系统探针</h3>
+
+<p>操作系统，尤其是 kernel，提供了数以千计的探针，被分成不同的提供者 (provider) 组。其中的很多在 <a href="https://docs.oracle.com/cd/E23824_01/html/E22973/gkyal.html" title="Oracle: DTrace Providers">Oracle 的 DTrace 文档</a>中可以找到。</p>
+
+<p>通过下面的脚本，我们可以用 <code>ip</code> 提供者中的 <code>send</code> 探针来检查转换到下一个状态之前通过网络发送了多少字节：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">uint64_t</span> <span class="n">bytes_sent</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">syncengine_sync$target</span><span class="o">:::</span><span class="n">strategy_go_to_state</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Transitioning to state %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">arg0</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Sent %d bytes in previous state</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">bytes_sent</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">bytes_sent</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">ip</span><span class="o">:::</span><span class="n">send</span>
+</span><span class='line'><span class="o">/</span> <span class="n">pid</span> <span class="o">==</span> <span class="n">$target</span> <span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">bytes_sent</span> <span class="o">+=</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">ip_plength</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这次我们的目标为某个特定的进程 &ndash; <code>ip:::send</code> 会匹配系统的所有进程，而我们只对 <code>Wire</code> 进程感兴趣。我们运行如下的脚本：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">sudo</span> <span class="n">dtrace</span> <span class="o">-</span><span class="n">q</span> <span class="o">-</span><span class="n">s</span> <span class="n">sample</span><span class="o">-</span><span class="n">timing</span><span class="o">-</span><span class="mf">3.</span><span class="n">d</span> <span class="o">-</span><span class="n">p</span> <span class="mi">198</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里 <code>198</code> 是进程标识 (亦称 PID)。我们可以在活动监视器这个 app 中找到这个数字，或者使用 <a href="https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/ps.1.html"><code>ps(1)</code> 命令行工具</a>。</p>
+
+<p>我们会得到:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">Transitioning</span> <span class="n">to</span> <span class="n">state</span> <span class="mi">6</span>
+</span><span class='line'><span class="n">Sent</span> <span class="mi">2043</span> <span class="n">bytes</span> <span class="k">in</span> <span class="n">previous</span> <span class="n">state</span>
+</span><span class='line'><span class="n">Transitioning</span> <span class="n">to</span> <span class="n">state</span> <span class="mi">4</span>
+</span><span class='line'><span class="n">Sent</span> <span class="mi">581</span> <span class="n">bytes</span> <span class="k">in</span> <span class="n">previous</span> <span class="n">state</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><a name="DProgrammingLanguage"></a></p>
+
+<h2>D 语言</h2>
+
+<p>注意：这<strong>不是</strong><a href="https://en.wikipedia.org/wiki/D_%28programming_language%29">W. Bright 和 A. Alexandrescu 的 D 语言</a>。</p>
+
+<p>D 语言的大部分跟 C 语言都非常相似，但总体架构是不同的。每一个 Dtrace 脚本由多个所谓的<strong>探针语句</strong>组成。</p>
+
+<p>在上面的例子中，我们已经看到了一些这种<strong>探针语句</strong>。它们都符合如下的形式:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">probe</span> <span class="n">descriptions</span>
+</span><span class='line'><span class="o">/</span> <span class="n">predicate</span> <span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">action</span> <span class="n">statements</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>断言 (<em>predicate</em>) 和动作语句 (<em>action statement</em>) 部分都是可选的。</p>
+
+<h3>探针描述</h3>
+
+<p>探针描述定义了语句匹配什么探针。所有的部分都可以省略，形式如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="nl">provider:module:function:</span><span class="n">name</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>例如，<code>syscall:::</code> 匹配所有 <code>syscall</code> 提供者的探针。我们可以使用 <code>*</code> 匹配任何字符串，例如 <code>syscall::*lwp*:entry</code> 匹配所有 <code>syscall</code> 提供者的 <code>entry</code>，并且函数名字包含 <code>lwp</code> 的探针。</p>
+
+<p>一个探针描述可以包含多个探针，例如:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">syscall</span><span class="o">::*</span><span class="n">lwp</span><span class="o">*:</span><span class="n">entry</span><span class="p">,</span> <span class="n">syscall</span><span class="o">::*</span><span class="n">sock</span><span class="o">*:</span><span class="n">entry</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">trace</span><span class="p">(</span><span class="n">timestamp</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>断言</h3>
+
+<p>当<strong>动作语句</strong>开始运行时我们可以使用断言来限制。当触发特定的探针时断言会被计算。如果断言结果为非 0，<em>action statements</em> 将会运行，这和 C 语言中的 <code>if</code> 语句类似。</p>
+
+<p>我们可以使用不同的断言来判断同一个探针多次。如果有多个匹配，它们将会按照在 D 程序中的出现的顺序执行。</p>
+
+<h3>动作</h3>
+
+<p>动作包含在花括号中。D 语言是轻量，精悍而且简单的语言。</p>
+
+<p>D 不支持控制流，比如循环和分支。我们不能定义任何用户函数。变量定义也是可选的。</p>
+
+<p>这限制了我们能做的事情。但是一旦知道了一些常见的模式，这种简单也给了我们很多灵活性，我们将在下一节详细讨论。在 <a href="https://docs.oracle.com/cd/E23824_01/html/E22973/gkwpo.html#scrolltoc" title="D Programming Language">D Programming Language</a> 的指南中可以查看更多的细节。</p>
+
+<h2>常见 D 语言模式</h2>
+
+<p>下面的例子会给让我们认识一些我们能做的事情。</p>
+
+<p>这个例子统计了 <em>App Store</em> 应用在 syscall (也就是一个系统调用，或对 kernel 中进行的调用) 中累计使用的时间。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">syscall</span><span class="o">:::</span><span class="n">entry</span>
+</span><span class='line'><span class="o">/</span> <span class="n">execname</span> <span class="o">==</span> <span class="s">&quot;App Store&quot;</span> <span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">self</span><span class="o">-&gt;</span><span class="n">ts</span> <span class="o">=</span> <span class="n">timestamp</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">syscall</span><span class="o">:::</span><span class="k">return</span>
+</span><span class='line'><span class="o">/</span> <span class="n">execname</span> <span class="o">==</span> <span class="s">&quot;App Store&quot;</span> <span class="o">&amp;&amp;</span> <span class="n">self</span><span class="o">-&gt;</span><span class="n">ts</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="err">@</span><span class="n">totals</span><span class="p">[</span><span class="n">probefunc</span><span class="p">]</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">timestamp</span> <span class="o">-</span> <span class="n">self</span><span class="o">-&gt;</span><span class="n">ts</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果运行这个并且开启 <em>App Store</em> 应用，然后用 <code>^C</code> 退出 DTrace 脚本，可以得到像这样的输出:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="nl">dtrace:</span> <span class="n">script</span> <span class="err">&#39;</span><span class="n">app</span><span class="o">-</span><span class="n">store</span><span class="p">.</span><span class="n">d</span><span class="err">&#39;</span> <span class="n">matched</span> <span class="mi">980</span> <span class="n">probes</span>
+</span><span class='line'><span class="o">^</span><span class="n">C</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">__disable_threadsignal</span>                                         <span class="mi">2303</span>
+</span><span class='line'>  <span class="n">__pthread_sigmask</span>                                              <span class="mi">2438</span>
+</span><span class='line'>  <span class="n">psynch_cvclrprepost</span>                                            <span class="mi">3216</span>
+</span><span class='line'>  <span class="n">ftruncate</span>                                                      <span class="mi">3663</span>
+</span><span class='line'>  <span class="n">bsdthread_register</span>                                             <span class="mi">3754</span>
+</span><span class='line'>  <span class="n">shared_region_check_np</span>                                         <span class="mi">3939</span>
+</span><span class='line'>  <span class="n">getpid</span>                                                         <span class="mi">4189</span>
+</span><span class='line'>  <span class="n">getegid</span>                                                        <span class="mi">4276</span>
+</span><span class='line'>  <span class="n">gettimeofday</span>                                                   <span class="mi">4285</span>
+</span><span class='line'>  <span class="n">flock</span>                                                          <span class="mi">4825</span>
+</span><span class='line'>  <span class="n">sigaltstack</span>                                                    <span class="mi">4874</span>
+</span><span class='line'>  <span class="n">kdebug_trace</span>                                                   <span class="mi">5430</span>
+</span><span class='line'>  <span class="n">kqueue</span>                                                         <span class="mi">5860</span>
+</span><span class='line'>  <span class="n">workq_open</span>                                                     <span class="mi">6155</span>
+</span><span class='line'>  <span class="n">sigprocmask</span>                                                    <span class="mi">6188</span>
+</span><span class='line'>  <span class="n">setrlimit</span>                                                      <span class="mi">7085</span>
+</span><span class='line'>  <span class="n">psynch_cvsignal</span>                                                <span class="mi">8909</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="p">[...]</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">stat64</span>                                                      <span class="mi">6451260</span>
+</span><span class='line'>  <span class="n">read</span>                                                        <span class="mi">6657207</span>
+</span><span class='line'>  <span class="n">fsync</span>                                                       <span class="mi">8231130</span>
+</span><span class='line'>  <span class="n">rename</span>                                                      <span class="mi">8340468</span>
+</span><span class='line'>  <span class="n">open_nocancel</span>                                               <span class="mi">8856035</span>
+</span><span class='line'>  <span class="n">workq_kernreturn</span>                                           <span class="mi">15835068</span>
+</span><span class='line'>  <span class="n">getdirentries64</span>                                            <span class="mi">17978504</span>
+</span><span class='line'>  <span class="n">bsdthread_ctl</span>                                              <span class="mi">25418263</span>
+</span><span class='line'>  <span class="n">open</span>                                                       <span class="mi">29503041</span>
+</span><span class='line'>  <span class="n">psynch_mutexwait</span>                                          <span class="mi">453338483</span>
+</span><span class='line'>  <span class="n">ioctl</span>                                                    <span class="mi">1049412360</span>
+</span><span class='line'>  <span class="n">__semwait_signal</span>                                         <span class="mi">1373514528</span>
+</span><span class='line'>  <span class="n">select</span>                                                   <span class="mi">1632760820</span>
+</span><span class='line'>  <span class="n">kevent64</span>                                                 <span class="mi">3656884980</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在这个例子中，<em>App Store</em> 在 <code>kevent64</code> 中花费了 3.6 秒。</p>
+
+<p>这个脚本中有两个特别有意思的事情：线程本地变量 (<code>self-&gt;ts</code>) 和集积 (aggregation)。</p>
+
+<h3>变量作用域 (scope)</h3>
+
+<p>D 语言有 3 种变量作用域: 全局，线程本地，以及探针语句本地。</p>
+
+<p><code>foo</code> 或 <code>bar</code> 这样的全局变量在整个 D 语言中都是可见的。</p>
+
+<p>线程本地变量命名为 <code>self-&gt;foo</code>，<code>self-&gt;bar</code> 等，并且存在与特定的线程中。</p>
+
+<p>探针语句本地变量与 C 或 Swift 中的本地变量类似。对于中间结果来说很有用。</p>
+
+<p>在这个脚本中，当进入 syscall 时我们使用第一个探针语句来匹配。我们将当前时间戳赋值给线程本地变量 <code>self-&gt;ts</code>：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">syscall</span><span class="o">:::</span><span class="n">entry</span>
+</span><span class='line'><span class="o">/</span> <span class="n">execname</span> <span class="o">==</span> <span class="s">&quot;App Store&quot;</span> <span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">self</span><span class="o">-&gt;</span><span class="n">ts</span> <span class="o">=</span> <span class="n">timestamp</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>第二个语句在从 syscall 中返回时匹配。这个调用将和进入时是同一个线程，因此可以确定，即使有多个线程在同一时间进行系统调用，<code>self-&gt;ts</code> 也具有我们所期待的值。</p>
+
+<p>我们在谓词里加入了 <code>self-&gt;ts != 0</code> 来确保即使脚本是在应用处于系统调用中的时候被追加的，它也能正确运行。否则，<code>timestamp - self-&gt;ts</code> 将会是一个非常大的值，因为这时 <code>self-&gt;ts</code> 是还没有被设置的初始值：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">syscall</span><span class="o">:::</span><span class="k">return</span>
+</span><span class='line'><span class="o">/</span> <span class="n">execname</span> <span class="o">==</span> <span class="s">&quot;App Store&quot;</span> <span class="o">&amp;&amp;</span> <span class="n">self</span><span class="o">-&gt;</span><span class="n">ts</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="err">@</span><span class="n">totals</span><span class="p">[</span><span class="n">probefunc</span><span class="p">]</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">timestamp</span> <span class="o">-</span> <span class="n">self</span><span class="o">-&gt;</span><span class="n">ts</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过 <a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-variables/index.html" title="Dynamic Tracing Guide, Variables">Dynamic Tracing Guide, “Variables.”</a> 可以查看关于变量的核心知识。</p>
+
+<p><a name="Aggregations"></a></p>
+
+<h3>集积 (Aggregation)</h3>
+
+<p>这行代码使用了集积：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="err">@</span><span class="n">totals</span><span class="p">[</span><span class="n">probefunc</span><span class="p">]</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">timestamp</span> <span class="o">-</span> <span class="n">self</span><span class="o">-&gt;</span><span class="n">ts</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这是 DTrace 的一个极其强大的特性。</p>
+
+<p>我们将 <code>totals</code> 称为集积变量。变量名前面的 <code>@</code> 将它转变为集积行为。<code>probefunc</code> 是一个内置变量 &ndash; 它是探针函数的名字。对于 <code>syscall</code> 探针，<code>probefunc</code> 是正在运行的系统调用的名字。</p>
+
+<p><code>sum</code> 是集积函数。在这个例子中，该集积用来计算每一个 <code>probefunc</code> 对应的 <code>timestamp - self-&gt;ts</code> 的和。</p>
+
+<p><a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-aggs-trunc/index.html">DTrace Guide</a> 展示了一个小例子，该例子使用集积来打印每秒钟调用系统最多的 10 个应用的系统调用的数量。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="cp">#pragma D option quiet</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">BEGIN</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">last</span> <span class="o">=</span> <span class="n">timestamp</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">syscall</span><span class="o">:::</span><span class="n">entry</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="err">@</span><span class="n">func</span><span class="p">[</span><span class="n">execname</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span><span class="p">();</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">tick</span><span class="o">-</span><span class="mi">10</span><span class="n">sec</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">trunc</span><span class="p">(</span><span class="err">@</span><span class="n">func</span><span class="p">,</span> <span class="mi">10</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">normalize</span><span class="p">(</span><span class="err">@</span><span class="n">func</span><span class="p">,</span> <span class="p">(</span><span class="n">timestamp</span> <span class="o">-</span> <span class="n">last</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1000000000</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">printa</span><span class="p">(</span><span class="err">@</span><span class="n">func</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">clear</span><span class="p">(</span><span class="err">@</span><span class="n">func</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">last</span> <span class="o">=</span> <span class="n">timestamp</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在大多数空闲的 OS X 上，可能会显示如下:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">kextd</span>                                                             <span class="mi">7</span>
+</span><span class='line'><span class="n">ntpd</span>                                                              <span class="mi">8</span>
+</span><span class='line'><span class="n">mds_stores</span>                                                       <span class="mi">19</span>
+</span><span class='line'><span class="n">cfprefsd</span>                                                         <span class="mi">20</span>
+</span><span class='line'><span class="n">dtrace</span>                                                           <span class="mi">20</span>
+</span><span class='line'><span class="n">UserEventAgent</span>                                                   <span class="mi">34</span>
+</span><span class='line'><span class="n">launchd</span>                                                          <span class="mi">42</span>
+</span><span class='line'><span class="n">Safari</span>                                                          <span class="mi">109</span>
+</span><span class='line'><span class="n">cloudd</span>                                                          <span class="mi">115</span>
+</span><span class='line'><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">WebKi</span>                                                 <span class="mi">177</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">mds</span>                                                               <span class="mi">8</span>
+</span><span class='line'><span class="n">Wire</span>                                                              <span class="mi">8</span>
+</span><span class='line'><span class="n">Terminal</span>                                                         <span class="mi">10</span>
+</span><span class='line'><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">iClou</span>                                                  <span class="mi">15</span>
+</span><span class='line'><span class="n">dtrace</span>                                                           <span class="mi">20</span>
+</span><span class='line'><span class="n">securityd</span>                                                        <span class="mi">20</span>
+</span><span class='line'><span class="n">tccd</span>                                                             <span class="mi">37</span>
+</span><span class='line'><span class="n">syncdefaultsd</span>                                                    <span class="mi">98</span>
+</span><span class='line'><span class="n">Safari</span>                                                          <span class="mi">109</span>
+</span><span class='line'><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">WebKi</span>                                                 <span class="mi">212</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们看到 Safari，WebKit 和 <code>cloudd</code> 很活跃。</p>
+
+<p>下表为所有集积函数:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">Function</span> <span class="n">Name</span>     <span class="o">|</span> <span class="n">Result</span>
+</span><span class='line'><span class="o">------------------|---------</span>
+</span><span class='line'><span class="n">count</span>             <span class="o">|</span> <span class="n">Number</span> <span class="n">of</span> <span class="n">times</span> <span class="n">called</span>
+</span><span class='line'><span class="n">sum</span>               <span class="o">|</span> <span class="n">Sum</span> <span class="n">of</span> <span class="n">the</span> <span class="n">passed</span> <span class="k">in</span> <span class="n">values</span>
+</span><span class='line'><span class="n">avg</span>               <span class="o">|</span> <span class="n">Average</span> <span class="n">of</span> <span class="n">the</span> <span class="n">passed</span> <span class="k">in</span> <span class="n">values</span>
+</span><span class='line'><span class="n">min</span>               <span class="o">|</span> <span class="n">Smallest</span> <span class="n">of</span> <span class="n">the</span> <span class="n">passed</span> <span class="k">in</span> <span class="n">values</span>
+</span><span class='line'><span class="n">max</span>               <span class="o">|</span> <span class="n">Largest</span> <span class="n">of</span> <span class="n">the</span> <span class="n">passed</span> <span class="k">in</span> <span class="n">values</span>
+</span><span class='line'><span class="n">lquantize</span>         <span class="o">|</span> <span class="n">Linear</span> <span class="n">frequency</span> <span class="n">distribution</span>
+</span><span class='line'><span class="n">quantize</span>          <span class="o">|</span> <span class="n">Power</span><span class="o">-</span><span class="n">of</span><span class="o">-</span><span class="n">two</span> <span class="n">frequency</span> <span class="n">distribution</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>quantize</code> 和 <code>lquantize</code> 函数可以给出一个关于传入的数量的概览:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">ip</span><span class="o">:::</span><span class="n">send</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="err">@</span><span class="n">bytes_sent</span><span class="p">[</span><span class="n">execname</span><span class="p">]</span> <span class="o">=</span> <span class="n">quantize</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">ip_plength</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的代码会输出类似这样的结果:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">discoveryd</span>
+</span><span class='line'>         <span class="n">value</span>  <span class="o">-------------</span> <span class="n">Distribution</span> <span class="o">-------------</span> <span class="n">count</span>
+</span><span class='line'>            <span class="mi">16</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span><span class='line'>            <span class="mi">32</span> <span class="o">|</span><span class="err">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@</span> <span class="mi">2</span>
+</span><span class='line'>            <span class="mi">64</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">syncdefaultsd</span>
+</span><span class='line'>         <span class="n">value</span>  <span class="o">-------------</span> <span class="n">Distribution</span> <span class="o">-------------</span> <span class="n">count</span>
+</span><span class='line'>           <span class="mi">256</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span><span class='line'>           <span class="mi">512</span> <span class="o">|</span><span class="err">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@</span> <span class="mi">4</span>
+</span><span class='line'>          <span class="mi">1024</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">kernel_task</span>
+</span><span class='line'>         <span class="n">value</span>  <span class="o">-------------</span> <span class="n">Distribution</span> <span class="o">-------------</span> <span class="n">count</span>
+</span><span class='line'>             <span class="mi">8</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span><span class='line'>            <span class="mi">16</span> <span class="o">|</span><span class="err">@@@@@@@@@@@@@@</span>                           <span class="mi">37</span>
+</span><span class='line'>            <span class="mi">32</span> <span class="o">|</span><span class="err">@@@@@@@@@@@@@@@@@@@@@@@@@@</span>               <span class="mi">67</span>
+</span><span class='line'>            <span class="mi">64</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">WebKi</span>
+</span><span class='line'>         <span class="n">value</span>  <span class="o">-------------</span> <span class="n">Distribution</span> <span class="o">-------------</span> <span class="n">count</span>
+</span><span class='line'>            <span class="mi">16</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span><span class='line'>            <span class="mi">32</span> <span class="o">|</span><span class="err">@@@@@@@@@@@@@@@@</span>                         <span class="mi">28</span>
+</span><span class='line'>            <span class="mi">64</span> <span class="o">|</span><span class="err">@@@@</span>                                     <span class="mi">7</span>
+</span><span class='line'>           <span class="mi">128</span> <span class="o">|</span><span class="err">@@@@</span>                                     <span class="mi">6</span>
+</span><span class='line'>           <span class="mi">256</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span><span class='line'>           <span class="mi">512</span> <span class="o">|</span><span class="err">@@@@@@@@@@@@@@@@</span>                         <span class="mi">27</span>
+</span><span class='line'>          <span class="mi">1024</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>查看 <a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-aggs-2/index.html">Dynamic Tracing Guide 的示例</a>来了解如何使用 <code>lquantize</code>。</p>
+
+<h3>联合数组</h3>
+
+<p>不管名字如何，D 语言中的数组更类似 Swift 或 Objective-C 中的字典。另外，它们都是可变的。</p>
+
+<p>我们可以这样定义一个联合数组:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="kt">int</span> <span class="n">x</span><span class="p">[</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">long</span><span class="p">,</span> <span class="kt">char</span><span class="p">];</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后我们可以给它赋值:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">BEGIN</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">x</span><span class="p">[</span><span class="mi">123</span><span class="n">ull</span><span class="p">,</span> <span class="err">’</span><span class="n">a</span><span class="err">’</span><span class="p">]</span> <span class="o">=</span> <span class="mi">456</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对于 Wire 应用，我们想要追踪 <a href="https://developer.apple.com/library/ios/documentation/Foundation/Reference/NSURLSessionTask_class/index.html" title="ADC: NSURLSessionTask">NSURLSessionTask</a> 实例的往复时间。当开始一个任务时，我们触发一个<a href="#staticProbes">静态定义的探针</a>，当完成时还有另一个探针。我们可以写一个简单的脚本：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">syncengine_sync$target</span><span class="o">:::</span><span class="n">operation_loop_enqueue</span>
+</span><span class='line'><span class="o">/</span> <span class="n">arg0</span> <span class="o">==</span> <span class="mi">4</span> <span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">start_transport_request_timestamp</span><span class="p">[</span><span class="n">arg1</span><span class="p">]</span> <span class="o">=</span> <span class="n">timestamp</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">syncengine_sync$target</span><span class="o">:::</span><span class="n">operation_loop_enqueue</span>
+</span><span class='line'><span class="o">/</span> <span class="n">arg0</span> <span class="o">==</span> <span class="mi">6</span> <span class="o">&amp;&amp;</span> <span class="n">start_transport_request_timestamp</span><span class="p">[</span><span class="n">arg1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="err">@</span><span class="n">time</span><span class="p">[</span><span class="s">&quot;time for transport request round-trip&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">quantize</span><span class="p">(</span><span class="n">timestamp</span> <span class="o">-</span> <span class="n">start_transport_request_timestamp</span><span class="p">[</span><span class="n">arg1</span><span class="p">]);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们传入 <a href="https://developer.apple.com/library/ios/documentation/Foundation/Reference/NSURLSessionTask_class/index.html#//apple_ref/occ/instp/NSURLSessionTask/taskIdentifier" title="-[NSURLSessionTask taskIdentifer]"><code>taskIdentifer</code></a> 作为 <code>arg1</code>，任务开始时 <code>arg0</code> 被设置为 4，任务完成时被设置为 6。</p>
+
+<p>正如我们在第一个<a href="#ATimingExample">定时的例子</a>中看到的那样，联合数组在为传入语句的 <code>enum</code> 值提供描述时也非常有用。</p>
+
+<h2>探针和提供者</h2>
+
+<p>让我们回过头看看可用的探针。</p>
+
+<p>可以使用如下的命令来获得一个所有可用探针的列表:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">sudo</span> <span class="n">dtrace</span> <span class="o">-</span><span class="n">l</span> <span class="o">|</span> <span class="n">awk</span> <span class="err">&#39;</span><span class="p">{</span> <span class="n">match</span><span class="p">(</span><span class="n">$2</span><span class="p">,</span> <span class="s">&quot;([a-z,A-Z]*)&quot;</span><span class="p">);</span> <span class="n">print</span> <span class="nf">substr</span><span class="p">(</span><span class="n">$2</span><span class="p">,</span> <span class="n">RSTART</span><span class="p">,</span> <span class="n">RLENGTH</span><span class="p">);</span> <span class="p">}</span><span class="err">&#39;</span> <span class="o">|</span> <span class="n">sort</span> <span class="o">-</span><span class="n">u</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在 OS X 10.10 中有 79 个提供者。其中许多都与 kernel 和系统调用相关。</p>
+
+<p>其中一些提供者是 <a href="https://docs.oracle.com/cd/E23824_01/html/E22973/gkyal.html" title="Oracle: DTrace Providers">Dynamic Tracing Guide</a> 文档中的原始集合中的一部分。让我们看看其中一些我们可用的。</p>
+
+<h3><code>dtrace</code> 提供者</h3>
+
+<p>我们<a href="#ATimingExample">之前</a>提到过 <code>BEGIN</code> 和 <code>END</code> 探针。当以安静模式运行 DTrace 时，<code>dtrace:::END</code> 对于输出摘要尤其有用。错误发生时还有 <code>ERROR</code> 探针。</p>
+
+<h3><code>profile</code> 提供者</h3>
+
+<p><a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-profile/index.html" title="profile Provider"><code>profile</code> 提供者</a>可以用来在某种程度上采样，这对于 Instruments 的用户来说应该非常熟悉。</p>
+
+<p>我们可以以 1001 赫兹的频率来采样栈深度：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">profile</span><span class="o">-</span><span class="mi">1001</span>
+</span><span class='line'><span class="o">/</span><span class="n">pid</span> <span class="o">==</span> <span class="n">$1</span><span class="o">/</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="err">@</span><span class="n">proc</span><span class="p">[</span><span class="n">execname</span><span class="p">]</span> <span class="o">=</span> <span class="n">lquantize</span><span class="p">(</span><span class="n">stackdepth</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>输出会是这样:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">Safari</span>
+</span><span class='line'>         <span class="n">value</span>  <span class="o">-------------</span> <span class="n">Distribution</span> <span class="o">-------------</span> <span class="n">count</span>
+</span><span class='line'>           <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span><span class='line'>             <span class="mi">0</span> <span class="o">|</span><span class="err">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@</span>     <span class="mi">704</span>
+</span><span class='line'>             <span class="mi">1</span> <span class="o">|</span><span class="err">@</span>                                        <span class="mi">12</span>
+</span><span class='line'>             <span class="mi">2</span> <span class="o">|</span><span class="err">@@</span>                                       <span class="mi">30</span>
+</span><span class='line'>             <span class="mi">3</span> <span class="o">|</span><span class="err">@</span>                                        <span class="mi">17</span>
+</span><span class='line'>             <span class="mi">4</span> <span class="o">|</span>                                         <span class="mi">7</span>
+</span><span class='line'>             <span class="mi">5</span> <span class="o">|</span>                                         <span class="mi">6</span>
+</span><span class='line'>             <span class="mi">6</span> <span class="o">|</span>                                         <span class="mi">1</span>
+</span><span class='line'>             <span class="mi">7</span> <span class="o">|</span>                                         <span class="mi">2</span>
+</span><span class='line'>             <span class="mi">8</span> <span class="o">|</span>                                         <span class="mi">1</span>
+</span><span class='line'>             <span class="mi">9</span> <span class="o">|</span>                                         <span class="mi">7</span>
+</span><span class='line'>            <span class="mi">10</span> <span class="o">|</span>                                         <span class="mi">5</span>
+</span><span class='line'>            <span class="mi">11</span> <span class="o">|</span>                                         <span class="mi">1</span>
+</span><span class='line'>            <span class="mi">12</span> <span class="o">|</span>                                         <span class="mi">0</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>类似的，<code>tick-</code> 探针会每隔固定的时间间隔，以很高打断的级别触发。<code>profile-</code> 探针会在所有 CPU 上触发，而 <code>tick-</code> 每个间隔只会在一个 CPU 上。我们在上面的<a href="#Aggregations">集积</a>例子中使用了 <code>tick-10sec</code> 。</p>
+
+<h3><code>pid</code> 提供者</h3>
+
+<p><code>pid</code> 是一个有点野蛮的提供者。大多数时候，我们真的应该使用下面将要提到的<a href="#staticProbes">静态探针</a>。</p>
+
+<p><code>pid</code> 是进程标识 (process identifier) 的缩写。它可以让我们在进入和退出进程时进行探测。这在<strong>大多数</strong>情况下是可行的。注意函数的进入和返回并不总是可以很好地界定，尤其是在<strong>尾调用优化 (tail-call optimization)</strong>时。另外还有某些函数并不需要创建栈帧等等情况。</p>
+
+<p>当你不能改变代码来增加<a href="#staticProbes">静态探针</a>时，<code>pid</code> 是一个强大的工具。</p>
+
+<p>你可以追踪任何可见的函数。例如这个探针:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="nl">pid123:libSystem:printf:</span><span class="k">return</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这个探针会附加到进程标识 (PID) 为 123 的进程中的 <code>printf</code> 函数。</p>
+
+<h3><code>objc</code> 提供者</h3>
+
+<p>与 <code>pid</code> 提供者直接对应的是 <code>objc</code> 提供者。它为 Objective-C 方法的进入和退出提供了探针。还是使用<a href="#staticProbes">静态探针</a>可以提供更好的灵活性。</p>
+
+<p><code>objc</code> 探针的格式如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="nl">objcpid:</span><span class="p">[</span><span class="n">class</span><span class="o">-</span><span class="n">name</span><span class="p">[(</span><span class="n">category</span><span class="o">-</span><span class="n">name</span><span class="p">)]]</span><span class="o">:</span><span class="p">[[</span><span class="o">+|-</span><span class="p">]</span><span class="n">method</span><span class="o">-</span><span class="n">name</span><span class="p">]</span><span class="o">:</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>举个例子：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="nl">objc207:NSTableView:</span><span class="o">-*:</span><span class="n">entry</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>将匹配进程号 207 中的 <code>NSTableView</code> 的所有实例方法条目。因为冒号 (<code>:</code>) 在 DTrace 中表示探针的指定方案，因此 Objective-C 中方法名里的冒号需要用一个问号 (<code>?</code>) 来替代。比如要匹配 <code>-[NSDate dateByAddingTimeInterval:]</code> 的话，可以这么写：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="nl">objc207:NSDate:</span><span class="o">-</span><span class="n">dateByAddingTimeInterval</span><span class="o">?:</span><span class="n">entry</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过查看 <a href="https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/dtrace.1.html" title="dtrace - generic front-end to the DTrace facility"><code>dtrace(1)</code> 帮助页面</a>可以获得更多详细信息。</p>
+
+<h3><code>io</code> 提供者</h3>
+
+<p>为了追踪与磁盘输入输出相关的活动，<a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-io/index.html" title="io Provider"><code>io</code> 提供者</a> 定义了 6 个探针:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">start</span>
+</span><span class='line'><span class="n">done</span>
+</span><span class='line'><span class="n">wait</span><span class="o">-</span><span class="n">start</span>
+</span><span class='line'><span class="n">wait</span><span class="o">-</span><span class="n">done</span>
+</span><span class='line'><span class="n">journal</span><span class="o">-</span><span class="n">start</span>
+</span><span class='line'><span class="n">journal</span><span class="o">-</span><span class="n">done</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-io/index.html" title="io Provider">Oracle 文档</a>中的例子展示了如何使用：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="cp">#pragma D option quiet</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">BEGIN</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%10s %58s %2s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="s">&quot;DEVICE&quot;</span><span class="p">,</span> <span class="s">&quot;FILE&quot;</span><span class="p">,</span> <span class="s">&quot;RW&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">io</span><span class="o">:::</span><span class="n">start</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%10s %58s %2s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">dev_statname</span><span class="p">,</span>
+</span><span class='line'>          <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">fi_pathname</span><span class="p">,</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">b_flags</span> <span class="o">&amp;</span> <span class="n">B_READ</span> <span class="o">?</span> <span class="s">&quot;R&quot;</span> <span class="o">:</span> <span class="s">&quot;W&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面的例子会输出类似这样的结果：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="o">??</span>                   <span class="o">??/</span><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">Safari</span><span class="p">.</span><span class="n">savedState</span><span class="o">/</span><span class="n">data</span><span class="p">.</span><span class="n">data</span>  <span class="n">R</span>
+</span><span class='line'><span class="o">??</span>            <span class="o">??/</span><span class="n">Preferences</span><span class="o">/</span><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">Terminal</span><span class="p">.</span><span class="n">plist</span><span class="p">.</span><span class="n">kn0E7LJ</span>  <span class="n">W</span>
+</span><span class='line'><span class="o">??</span>                                            <span class="o">??/</span><span class="n">vm</span><span class="o">/</span><span class="n">swapfile0</span>  <span class="n">R</span>
+</span><span class='line'><span class="o">??</span>              <span class="o">??/</span><span class="n">Preferences</span><span class="o">/</span><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">Safari</span><span class="p">.</span><span class="n">plist</span><span class="p">.</span><span class="n">jEQRQ5N</span>  <span class="n">W</span>
+</span><span class='line'><span class="o">??</span>           <span class="o">??/</span><span class="n">Preferences</span><span class="o">/</span><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">HIToolbox</span><span class="p">.</span><span class="n">plist</span><span class="p">.</span><span class="n">yBPXSnY</span>  <span class="n">W</span>
+</span><span class='line'><span class="o">??</span>       <span class="o">??/</span><span class="n">fsCachedData</span><span class="o">/</span><span class="n">F2BF76DB</span><span class="o">-</span><span class="mf">740F</span><span class="o">-</span><span class="mi">49</span><span class="n">AF</span><span class="o">-</span><span class="mi">94</span><span class="n">DC</span><span class="o">-</span><span class="mf">71308E08</span><span class="n">B474</span>  <span class="n">W</span>
+</span><span class='line'><span class="o">??</span>                           <span class="o">??/</span><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">Safari</span><span class="o">/</span><span class="n">Cache</span><span class="p">.</span><span class="n">db</span><span class="o">-</span><span class="n">wal</span>  <span class="n">W</span>
+</span><span class='line'><span class="o">??</span>                           <span class="o">??/</span><span class="n">com</span><span class="p">.</span><span class="n">apple</span><span class="p">.</span><span class="n">Safari</span><span class="o">/</span><span class="n">Cache</span><span class="p">.</span><span class="n">db</span><span class="o">-</span><span class="n">wal</span>  <span class="n">W</span>
+</span><span class='line'><span class="o">??</span>       <span class="o">??/</span><span class="n">fsCachedData</span><span class="o">/</span><span class="mi">88</span><span class="n">C00A4D</span><span class="o">-</span><span class="mi">4</span><span class="n">D8E</span><span class="o">-</span><span class="mi">4</span><span class="n">DD8</span><span class="o">-</span><span class="mi">906</span><span class="n">E</span><span class="o">-</span><span class="n">B1796AC949A2</span>  <span class="n">W</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1><code>ip</code> 提供者</h1>
+
+<p><a href="https://wikis.oracle.com/display/DTrace/ip+Provider" title="ip Provider"><code>ip</code> 提供者</a>有 <code>send</code> 和 <code>receive</code> 两个探针。任何时候数据通过 IP 被发送或接收都会触发。参数 <code>arg0</code> 到 <code>arg5</code> 提供了与发送或接收的 IP 包所相关的 kernel 结构体的访问入口。</p>
+
+<p>可以将二者放入非常强大的网络调试工具中。它可以使 <code>tcpdump(1)</code> 的看起来像过时的玩意。<code>ip</code> 提供者可以让我们在需要的时候精确的输出我们所需要的信息。</p>
+
+<p>查看<a href="https://wikis.oracle.com/display/DTrace/ip+Provider" title="ip Provider">文档</a>获得更多很棒的示例。</p>
+
+<p><a name="staticProbes"></a></p>
+
+<h2>定义自己的静态探针</h2>
+
+<p>DTrace 允许我们创建自己的探针，通过这个，我们可以为我们自己的 app 释放 DTrace 的真正威力。</p>
+
+<p>这些在 DTrace 中被称作<strong>静态探针</strong>。我们在<a href="#ATimingExample">第一个例子</a>中曾经简短的提到过。<a href="https://itunes.apple.com/app/wire/id931134707?mt=12">Wire</a> 定义了自己的提供者和探针：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">provider</span> <span class="n">syncengine_sync</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">probe</span> <span class="n">strategy_go_to_state</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后我们在代码中调用探针:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">goToState:</span><span class="p">(</span><span class="n">ZMSyncState</span> <span class="o">*</span><span class="p">)</span><span class="nv">state</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">currentState</span> <span class="n">didLeaveState</span><span class="p">];</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">currentState</span> <span class="o">=</span> <span class="n">state</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE</span><span class="p">(</span><span class="n">state</span><span class="p">.</span><span class="n">identifier</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">currentState</span> <span class="n">didEnterState</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>一个可能的争论就是我们本来可以干脆直接使用 <code>objc</code> 提供者；使用我们自己的探针可以更具灵活性。以后我们可以修改 Objective-C 代码而不影响 DTrace 探针。</p>
+
+<p>另外，静态探针给我们提供更方便的参数访问方式。通过上面我们可以看到我们如何利用它来追踪时间和输出日志。</p>
+
+<p>DTrace 静态探针的强大之处在于给我们提供了稳定的接口来调试我们的代码，并且即便是在生产代码中这个接口也是存在的。即使对于应用的生产版本，当有人看到奇怪的行为，我们也可以给正在运行的应用附加一段 DTrace 脚本。DTrace 的灵活性还可以让我们将同一个探针用于其他目的。</p>
+
+<p>我们可以将 DTrace 作为日志工具使用。还可以用来收集与时间，网络，请求等有关的详细的量化信息。</p>
+
+<p>我们可以将探针留在生产代码中的原因是探针是<strong>零损耗</strong>的，或者公平点说，相当于一个测试和分支的 CPU 指令。</p>
+
+<p>下面来看看如何将静态探针加入到我们的工程。</p>
+
+<h3>提供者描述</h3>
+
+<p>首先我们需要创建一个 <code>.d</code> 文件并定义提供者和探针。如果我们创建了一个 <code>provider.d</code> 文件并写入以下内容，会得到两个提供者:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">provider</span> <span class="n">syncengine_sync</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">probe</span> <span class="n">operation_loop_enqueue</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="n">intptr_t</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">probe</span> <span class="nf">operation_loop_push_channel_data</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">probe</span> <span class="nf">strategy_go_to_state</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">probe</span> <span class="nf">strategy_leave_state</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">probe</span> <span class="nf">strategy_update_event</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">probe</span> <span class="nf">strategy_update_event_string</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="p">);</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">provider</span> <span class="n">syncengine_ui</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">probe</span> <span class="n">notification</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="n">intptr_t</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>提供者是 <code>syncengine_sync</code> 和 <code>syncengine_ui</code>。在每个提供者中，我们定义了一组探针。</p>
+
+<h3>创建头文件</h3>
+
+<p>现在我们需要将 <code>provider.d</code> 加入到 Xcode 的构建目标中。确保将类型设置为 <em>DTrace source</em>，这十分重要。Xcode 现在会在构建时自动处理。在这个步骤中，DTrace 会创建一个对应的 <code>provider.h</code> 头文件，我们可以引入它。将 <code>provider.d</code> 同时加入 Xcode 工程和相应的构建目标非常重要。</p>
+
+<p>在处理时，Xcode 会调用 <code>dtrace(1)</code> 工具:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">dtrace</span> <span class="o">-</span><span class="n">h</span> <span class="o">-</span><span class="n">s</span> <span class="n">provider</span><span class="p">.</span><span class="n">d</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这会生成相应的头文件。该文件最后会出现在 <a href="https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef/1-Build_Setting_Reference/build_setting_ref.html#//apple_ref/doc/uid/TP40003931-CH3-SW43" title="DERIVED_FILE_DIR"><code>DERIVED_FILE_DIR</code></a> 中。可以通过以下方式在任何工程内的源文件中引用</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="cp">#import &quot;provider.h&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Xcode 有一个内置的所谓 <strong>build rule</strong> 来处理 DTrace 提供者描述。比较 <a href="http://objccn.io/issue-6-1">objc.io Build 过程</a>的内容来获取关于构建规则和构建处理的更多的信息。</p>
+
+<h3>增加探针</h3>
+
+<p>对于每一个静态探针，头文件会包含两个宏:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">PROVIDER_PROBENAME</span><span class="p">()</span>
+</span><span class='line'><span class="n">PROVIDER_PROBENAME_ENABLED</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>第一个是探针本身。第二个会在探针关闭时取值为 0。</p>
+
+<p>DTrace 探针自己本身在没被启用时是零消耗的，也就是说只要没有附加在探针上的东西，它们就不会产生消耗。然而有时，我们可能想要提前判断或将数据发送给探针之前做一些预处理。在这些不太常见的情况下，我们可以使用 <code>_ENABLED()</code> 宏：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE_ENABLED</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">argument</span> <span class="o">=</span> <span class="cm">/* Expensive argument calculation code here */</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE</span><span class="p">(</span><span class="n">argument</span><span class="p">);</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>包装 DTrace 探针</h3>
+
+<p>代码可读性非常重要。随着增加越来越多的探针到代码中，我们需要确保代码不会因此而变得乱七八糟和难以理解。毕竟探针的目的是帮助我们而不是将事情变得更复杂。</p>
+
+<p>我们所需要做的就是增加另一个简单的包装器。这些包装器既使代码的可读性更好了一些，也增加了 <code>if (…_ENABLED*())</code> 检查。</p>
+
+<p>回到状态机器的例子中，我们的探针宏是这样的：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE</span><span class="p">(</span><span class="n">state</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>为了使它变得更简单，我们创建另一个头文件并定义：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">ZMTraceSyncStrategyGoToState</span><span class="p">(</span><span class="kt">int</span> <span class="n">d</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE</span><span class="p">(</span><span class="n">d</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>有了这个，之后我们就调用：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">ZMTraceSyncStrategyGoToState</span><span class="p">(</span><span class="n">state</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这看起来有点取巧，但是<a href="https://en.wikipedia.org/wiki/CamelCase">驼峰式命名</a>确实能在混合普通的 Objective-C 和 Swift 代码风格方面做得更好。</p>
+
+<p>更进一步的，如果我们看到上面定义的</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">provider</span> <span class="n">syncengine_ui</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">probe</span> <span class="n">notification</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="n">intptr_t</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">);</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>有一长串的参数。在 Wire 中，我们用这个来记录 UI 通知日志。</p>
+
+<p>这个探针有一长串的参数。我们决定只要一个探针来处理许多不同通知，这些通知都是同步代码发给 UI 用以提醒变化的。第一个参数，<code>arg0</code>，定义了是什么通知，第二个参数定义了 <code>NSNotification</code> 的 <code>object</code>。在这使得我们的 DTrace 脚本可以将感兴趣的范围限定在某几个指定的通知中。</p>
+
+<p>剩余的参数定义根据预先的通知不同可以稍微宽松些，而且对于各个单独情况我们有多个包装函数。当想要传入两个 <code>NSUUID</code> 对象的情况，我们类似这样来调用包装函数：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="n">ZMTraceUserInterfaceNotification_UUID</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">note</span><span class="p">.</span><span class="n">object</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">conversation</span><span class="p">.</span><span class="n">remoteIdentifier</span><span class="p">,</span> <span class="n">participant</span><span class="p">.</span><span class="n">user</span><span class="p">.</span><span class="n">remoteIdentifier</span><span class="p">,</span>
+</span><span class='line'>        <span class="n">wasJoined</span><span class="p">,</span> <span class="n">participant</span><span class="p">.</span><span class="n">isJoined</span><span class="p">,</span> <span class="n">currentState</span><span class="p">.</span><span class="n">connectionState</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这个包装函数是这样定义的:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">ZMTraceUserInterfaceNotification_UUID</span><span class="p">(</span><span class="kt">int</span> <span class="n">d</span><span class="p">,</span> <span class="n">NSObject</span> <span class="o">*</span><span class="n">obj</span><span class="p">,</span> <span class="n">NSUUID</span> <span class="o">*</span><span class="n">remoteID1</span><span class="p">,</span> <span class="n">NSUUID</span> <span class="o">*</span><span class="n">remoteID2</span><span class="p">,</span> <span class="kt">int</span> <span class="n">e</span><span class="p">,</span> <span class="kt">int</span> <span class="n">f</span><span class="p">,</span> <span class="kt">int</span> <span class="n">g</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">SYNCENGINE_UI_NOTIFICATION_ENABLED</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">SYNCENGINE_UI_NOTIFICATION</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="p">(</span><span class="n">intptr_t</span><span class="p">)</span> <span class="p">(</span><span class="n">__bridge</span> <span class="kt">void</span> <span class="o">*</span><span class="p">)</span> <span class="n">obj</span><span class="p">,</span> <span class="n">remoteID1</span><span class="p">.</span><span class="n">transportString</span><span class="p">.</span><span class="n">UTF8String</span><span class="p">,</span> <span class="n">remoteID2</span><span class="p">.</span><span class="n">transportString</span><span class="p">.</span><span class="n">UTF8String</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">h</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>正如之前提到的，我们有两个目的。第一，不让类似 <code>(intptr_t) (__bridge void *)</code> 这样的代码把我们的代码搞的乱七八糟。另外，除非因为附加到探针的时候有需要，其他时候我们无需花费 CPU 周期将一个 <code>NSUUID</code> 转换为 <code>NSString</code> 并进一步转换为 <code>char const *</code>。</p>
+
+<p>根据这个模式，我们可以定义多个包装器 / 辅助函数来复用相同的 DTrace 探针。</p>
+
+<h3>DTrace 和 Swift</h3>
+
+<p>像这样包装 DTrace 探针可以让我们整合 Swift 和 DTrace 静态探针。<code>static line</code> 函数现在可以在 Swift 代码中直接调用。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='glsl'><span class='line'><span class="n">func</span> <span class="n">goToState</span><span class="p">(</span><span class="n">state</span><span class="o">:</span> <span class="n">ZMSyncState</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">currentState</span><span class="p">.</span><span class="n">didLeaveState</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">currentState</span> <span class="o">=</span> <span class="n">state</span>
+</span><span class='line'>    <span class="n">currentState</span><span class="p">.</span><span class="n">didEnterState</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">ZMTraceSyncStrategyGoToState</span><span class="p">(</span><span class="n">state</span><span class="p">.</span><span class="n">identifier</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>DTrace 如何工作</h2>
+
+<p>D 语言是编译型语言。当运行 <code>dtrace(1)</code> 工具时，我们传入的脚本被编译成字节码。接着字节码被传入 kernel。在 kernel 中有一个解释器来运行这些字节码。</p>
+
+<p>这就是为什么这种编程语言可以保持简单。没人希望 DTrace 脚本中的 bug 引起 kernel 的死循环并导致系统挂起。</p>
+
+<p>当将静态探针加入可执行程序 (一个 app 或 framework)，它们被作为 <code>S_DTRACE_DOF</code> (Dtrace Object Format) 部分被加入，并且在程序运行时被加载进 kernel。这样 DTrace 就知道当前的静态探针。</p>
+
+<h2>最后的话</h2>
+
+<p>毫无疑问 DTrace 非常强大和灵活。然而需要注意的是 DTrace 并不是一些经过考验和真正的工具的替代品，如 <code>malloc_history</code>，<code>heap</code> 等。记得始终使用正确的工具。</p>
+
+<p>另外，DTrace 并不是魔法。你仍然需要知道你要解决的问题所在。</p>
+
+<p>这就是说，DTrace 可以使你的开发技能和能力达到一个新的水准。它可以让你在生产代码中追踪那些很难或不可能定位的问题。</p>
+
+<p>如果你的代码中有 <code>#ifdef TRACING</code> 或 <code>#if LOG_LEVEL == 1</code>，使用 DTrace 替换它们或许是很好的主意。</p>
+
+<p>记得查看 <a href="https://docs.oracle.com/cd/E23824_01/html/E22973/toc.html" title="Oracle Solaris Dynamic Tracing Guide">Dynamic Tracing Guide</a> (<a href="https://docs.oracle.com/cd/E23824_01/pdf/E22973.pdf" title="Oracle Solaris Dynamic Tracing Guide">PDF version</a>)。并且在你系统的 <code>/usr/share/examples/DTTk</code> 文件夹中获取更多的灵感。</p>
+
+<p>调试快乐！</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Metal]]></title>

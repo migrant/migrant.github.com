@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 翻译 | Migrant]]></title>
   <link href="http://objcio.com/blog/categories/fan-yi/atom.xml" rel="self"/>
   <link href="http://objcio.com/"/>
-  <updated>2014-11-26T11:21:11+08:00</updated>
+  <updated>2015-01-06T13:28:42+08:00</updated>
   <id>http://objcio.com/</id>
   <author>
     <name><![CDATA[Migrant]]></name>
@@ -12,6 +12,969 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[DTrace]]></title>
+    <link href="http://objcio.com/blog/2015/01/06/dtrace/"/>
+    <updated>2015-01-06T12:10:00+08:00</updated>
+    <id>http://objcio.com/blog/2015/01/06/dtrace</id>
+    <content type="html"><![CDATA[<p>本文由 <a href="http://objcio.com"><strong>Migrant</strong></a> 翻译自 <a href="http://www.objc.io/issue-19/dtrace.html">DTrace</a>，感谢 <a href="http://onevcat.com/">onevcat</a> 校对，转载请注明出处。本文亦被收录于 <a href="http://objccn.io/">objc中国</a>。</p>
+
+<p>很少有人听过 DTrace，它是隐藏在 OS 中的小宝藏。DTrace 是强大的 debug 工具 &ndash; 因为它拥有极其灵活的特性，并且因为与其它工具差异很大而可能相对不那么有名。</p>
+
+<p>许多时候你的 app 的真正的用户或测试人员会看到一些意外的行为。DTrace 可以让你无需重启 app 就能够在生产版本上回答关于 app 的任何问题。</p>
+
+<!--more-->
+
+
+<h2>动态追踪</h2>
+
+<p>大概 10 年前，<a href="https://en.wikipedia.org/wiki/Sun_Microsystems">Sun Microsystems</a> 创建了 DTrace，它的名字是 <em>Dynamic Trace</em> 的缩写。2007 年底，苹果公司将它集成在自己的 <a href="https://en.wikipedia.org/wiki/Mac_OS_X_Leopard">操作系统</a> 中。</p>
+
+<p>DTrace 是一个提供了 <em>zero disable cost</em> 的动态追踪框架，也就是说当代码中的探针关闭时，不会有额外的资源消耗 &ndash; 即使在生产版本中我们也可以将探针留在代码中。只有使用的时候才产生消耗。</p>
+
+<p>DTrace 是<strong>动态的</strong>，也就是说我们可以将它附加在一个已经在运行的程序上，也可以不打断程序将它剥离。不需要重新编译或启动。</p>
+
+<p>本文我们将重点介绍如何使用 DTrace 检查我们的程序，但值得注意的是 DTrace 是系统级的: 例如，一个单独的脚本可以观察到系统中<strong>所有</strong>进程的内存分配操作。可以查看 <code>/usr/share/examples/DTTk</code> 来深入了解一些非常好的例子。</p>
+
+<h3>OS X vs. iOS</h3>
+
+<p>正如你现在可能已经猜到的，DTrace 只能在 OS X 上运行。苹果也在 iOS 上使用 DTrace，用以支持像 Instruments 这样的工具，但对于第三方开发者，DTrace 只能运行于 OS X 或 iOS 模拟器。</p>
+
+<p>在 <a href="https://www.wire.com">Wire</a>，即使我们被限制仅能在 iOS 模拟器上使用 DTrace，它也在 iOS 开发中非常有用。如果你读到本文并且认为在 iOS 设备上支持 DTrace 是个好提议，请提交 <a href="https://bugreport.apple.com/">enhancement request</a> 给苹果。</p>
+
+<h3>探针和脚本</h3>
+
+<p>DTrace 有两部分：DTrace 探针，及附加在上面的 DTrace 脚本。</p>
+
+<h4>探针</h4>
+
+<p>你可以将内置 (所谓静态的) 探针加入代码中。IA 探针看起来和普通的 C 函数非常相似。在 Wire，我们的同步代码有一个内部状态机器，我们定义了如下两个探针：</p>
+
+<p>```
+provider syncengine_sync {</p>
+
+<pre><code>probe strategy_go_to_state(int);
+</code></pre>
+
+<p>} <br/>
+```</p>
+
+<p>探针被分组成所谓的 <em>providers</em>。参数 <code>int</code> 是正要进入的状态。在我们的 Objective-C (或 Swift) 代码中，简单的插入以下代码即可：</p>
+
+<p>```objc
+&ndash; (void)goToState:(ZMSyncState *)state
+{</p>
+
+<pre><code>[self.currentState didLeaveState];
+self.currentState = state;
+SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE(state.identifier);
+[self.currentState didEnterState];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>我们<a href="#staticProbes">后面</a>会讨论如何整合并且把流程说清楚一些。</p>
+
+<h4>脚本</h4>
+
+<p>现在我们可以编写一个 DTrace 小脚本来展示状态转变：</p>
+
+<p>```
+syncengine_sync*:::strategy_go_to_state
+{</p>
+
+<pre><code>printf("Transitioning to state %d\n", arg0);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>(<a href="#DProgrammingLanguage">后面</a>我们会详细展示 DTrace 脚本如何工作。)</p>
+
+<p>如果将 DTrace 保存进 <code>state.d</code>，接下来我们可以使用 <a href="https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/dtrace.1.html" title="dtrace - generic front-end to the DTrace facility"><code>dtrace(1)</code> 命令行工具</a> 来运行它：</p>
+
+<p><code>
+% sudo dtrace -q -s state.d
+</code></p>
+
+<p>我们可以看到:</p>
+
+<p><code>
+Transitioning to state 1
+Transitioning to state 2
+Transitioning to state 5
+</code></p>
+
+<p>正如我们所预期的，并没什么让人激动的。最后使用 <code>^C</code> 可以退出 DTrace。</p>
+
+<p><a name="ATimingExample"></a></p>
+
+<h3>一个定时例子</h3>
+
+<p>因为 DTrace 消耗非常小，所以非常适合用来测试性能 &ndash; 即使需要测试的时间非常短。DTrace 中的时间单位是纳秒。</p>
+
+<p>如果扩展上面的小例子，我们可以输出每个状态所花费的时间:</p>
+
+<p>```
+uint64_t last_state;
+uint64_t last_state_timestamp;</p>
+
+<p>dtrace:::BEGIN
+{</p>
+
+<pre><code>syncState[4] = "EventProcessing";
+syncState[5] = "QuickSync1";
+syncState[6] = "QuickSync2";
+</code></pre>
+
+<p>}</p>
+
+<p>syncengine_sync*:::strategy_go_to_state
+/ last_state_timestamp != 0 /
+{</p>
+
+<pre><code>t = (walltimestamp - last_state_timestamp) / 1000000;
+printf("Spent %d ms in state %s\n", t, syncState[last_state]);
+</code></pre>
+
+<p>}</p>
+
+<p>syncengine_sync*:::strategy_go_to_state
+{</p>
+
+<pre><code>printf("Transitioning to state %s\n", syncState[arg0]);
+last_state = arg0;
+last_state_timestamp = walltimestamp;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>这些代码会输出:</p>
+
+<p><code>
+Transitioning to state QuickSync1
+Spent 2205 ms in state QuickSync1
+Transitioning to state QuickSync2
+Spent 115 ms in state QuickSync2
+Transitioning to state EventProcessing
+</code></p>
+
+<p>脚本中有些新东西。<code>dtrace:::BEGIN</code> 语句在脚本开始时运行。脚本退出时有一个相应的 <code>END</code>。</p>
+
+<p>我们还给第一个探针增加了一个断言 (predicate)，<code>/ last_state_timestamp != 0 /</code>。</p>
+
+<p>最后我们使用全局变量来追踪最后的状态，以及什么时候进入该状态。</p>
+
+<p>内置的 <code>walltimestamp</code> 变量返回当前时间相对于 Unix epoch 时间以来的纳秒数。</p>
+
+<p>还有一个虚拟的单位为纳秒的时间戳变量，<code>vtimestamp</code>。它表示当前的线程在 CPU 上运行的时间减去在 DTrace 上花费的时间。最后，<code>machtimestamp</code> 对应 <code>mach_absolute_time()</code>。</p>
+
+<p>对于上面的脚本，执行的顺序非常重要。我们有两个所谓的<strong>语句</strong>对应同一个探针，(<code>syncengine_sync*:::strategy_go_to_state</code>)。它们会按照在 D 程序中出现的顺序执行。</p>
+
+<h3>结合系统探针</h3>
+
+<p>操作系统，尤其是 kernel，提供了数以千计的探针，被分成不同的提供者 (provider) 组。其中的很多在 <a href="https://docs.oracle.com/cd/E23824_01/html/E22973/gkyal.html" title="Oracle: DTrace Providers">Oracle 的 DTrace 文档</a>中可以找到。</p>
+
+<p>通过下面的脚本，我们可以用 <code>ip</code> 提供者中的 <code>send</code> 探针来检查转换到下一个状态之前通过网络发送了多少字节：</p>
+
+<p>```
+uint64_t bytes_sent;</p>
+
+<p>syncengine_sync$target:::strategy_go_to_state
+{</p>
+
+<pre><code>printf("Transitioning to state %d\n", arg0);
+printf("Sent %d bytes in previous state\n", bytes_sent);
+bytes_sent = 0;
+</code></pre>
+
+<p>}</p>
+
+<p>ip:::send
+/ pid == $target /
+{</p>
+
+<pre><code>bytes_sent += args[2]-&gt;ip_plength;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>这次我们的目标为某个特定的进程 &ndash; <code>ip:::send</code> 会匹配系统的所有进程，而我们只对 <code>Wire</code> 进程感兴趣。我们运行如下的脚本：</p>
+
+<p><code>
+sudo dtrace -q -s sample-timing-3.d -p 198
+</code></p>
+
+<p>这里 <code>198</code> 是进程标识 (亦称 PID)。我们可以在活动监视器这个 app 中找到这个数字，或者使用 <a href="https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/ps.1.html"><code>ps(1)</code> 命令行工具</a>。</p>
+
+<p>我们会得到:</p>
+
+<p><code>
+Transitioning to state 6
+Sent 2043 bytes in previous state
+Transitioning to state 4
+Sent 581 bytes in previous state
+</code></p>
+
+<p><a name="DProgrammingLanguage"></a></p>
+
+<h2>D 语言</h2>
+
+<p>注意：这<strong>不是</strong><a href="https://en.wikipedia.org/wiki/D_%28programming_language%29">W. Bright 和 A. Alexandrescu 的 D 语言</a>。</p>
+
+<p>D 语言的大部分跟 C 语言都非常相似，但总体架构是不同的。每一个 Dtrace 脚本由多个所谓的<strong>探针语句</strong>组成。</p>
+
+<p>在上面的例子中，我们已经看到了一些这种<strong>探针语句</strong>。它们都符合如下的形式:</p>
+
+<p>```
+probe descriptions
+/ predicate /
+{</p>
+
+<pre><code>action statements
+</code></pre>
+
+<p>}
+```</p>
+
+<p>断言 (<em>predicate</em>) 和动作语句 (<em>action statement</em>) 部分都是可选的。</p>
+
+<h3>探针描述</h3>
+
+<p>探针描述定义了语句匹配什么探针。所有的部分都可以省略，形式如下：</p>
+
+<p><code>
+provider:module:function:name
+</code></p>
+
+<p>例如，<code>syscall:::</code> 匹配所有 <code>syscall</code> 提供者的探针。我们可以使用 <code>*</code> 匹配任何字符串，例如 <code>syscall::*lwp*:entry</code> 匹配所有 <code>syscall</code> 提供者的 <code>entry</code>，并且函数名字包含 <code>lwp</code> 的探针。</p>
+
+<p>一个探针描述可以包含多个探针，例如:</p>
+
+<p>```
+syscall::<em>lwp</em>:entry, syscall::<em>sock</em>:entry
+{</p>
+
+<pre><code>trace(timestamp);
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>断言</h3>
+
+<p>当<strong>动作语句</strong>开始运行时我们可以使用断言来限制。当触发特定的探针时断言会被计算。如果断言结果为非 0，<em>action statements</em> 将会运行，这和 C 语言中的 <code>if</code> 语句类似。</p>
+
+<p>我们可以使用不同的断言来判断同一个探针多次。如果有多个匹配，它们将会按照在 D 程序中的出现的顺序执行。</p>
+
+<h3>动作</h3>
+
+<p>动作包含在花括号中。D 语言是轻量，精悍而且简单的语言。</p>
+
+<p>D 不支持控制流，比如循环和分支。我们不能定义任何用户函数。变量定义也是可选的。</p>
+
+<p>这限制了我们能做的事情。但是一旦知道了一些常见的模式，这种简单也给了我们很多灵活性，我们将在下一节详细讨论。在 <a href="https://docs.oracle.com/cd/E23824_01/html/E22973/gkwpo.html#scrolltoc" title="D Programming Language">D Programming Language</a> 的指南中可以查看更多的细节。</p>
+
+<h2>常见 D 语言模式</h2>
+
+<p>下面的例子会给让我们认识一些我们能做的事情。</p>
+
+<p>这个例子统计了 <em>App Store</em> 应用在 syscall (也就是一个系统调用，或对 kernel 中进行的调用) 中累计使用的时间。</p>
+
+<p>```
+syscall:::entry
+/ execname == &ldquo;App Store&rdquo; /
+{</p>
+
+<pre><code>self-&gt;ts = timestamp;
+</code></pre>
+
+<p>}</p>
+
+<p>syscall:::return
+/ execname == &ldquo;App Store&rdquo; &amp;&amp; self->ts != 0 /
+{</p>
+
+<pre><code>@totals[probefunc] = sum(timestamp - self-&gt;ts);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>如果运行这个并且开启 <em>App Store</em> 应用，然后用 <code>^C</code> 退出 DTrace 脚本，可以得到像这样的输出:</p>
+
+<p>```
+dtrace: script &lsquo;app-store.d&rsquo; matched 980 probes
+^C</p>
+
+<p>  <strong>disable_threadsignal                                         2303
+  </strong>pthread_sigmask                                              2438
+  psynch_cvclrprepost                                            3216
+  ftruncate                                                      3663
+  bsdthread_register                                             3754
+  shared_region_check_np                                         3939
+  getpid                                                         4189
+  getegid                                                        4276
+  gettimeofday                                                   4285
+  flock                                                          4825
+  sigaltstack                                                    4874
+  kdebug_trace                                                   5430
+  kqueue                                                         5860
+  workq_open                                                     6155
+  sigprocmask                                                    6188
+  setrlimit                                                      7085
+  psynch_cvsignal                                                8909</p>
+
+<p>  [&hellip;]</p>
+
+<p>  stat64                                                      6451260
+  read                                                        6657207
+  fsync                                                       8231130
+  rename                                                      8340468
+  open_nocancel                                               8856035
+  workq_kernreturn                                           15835068
+  getdirentries64                                            17978504
+  bsdthread_ctl                                              25418263
+  open                                                       29503041
+  psynch_mutexwait                                          453338483
+  ioctl                                                    1049412360
+  __semwait_signal                                         1373514528
+  select                                                   1632760820
+  kevent64                                                 3656884980
+```</p>
+
+<p>在这个例子中，<em>App Store</em> 在 <code>kevent64</code> 中花费了 3.6 秒。</p>
+
+<p>这个脚本中有两个特别有意思的事情：线程本地变量 (<code>self-&gt;ts</code>) 和集积 (aggregation)。</p>
+
+<h3>变量作用域 (scope)</h3>
+
+<p>D 语言有 3 种变量作用域: 全局，线程本地，以及探针语句本地。</p>
+
+<p><code>foo</code> 或 <code>bar</code> 这样的全局变量在整个 D 语言中都是可见的。</p>
+
+<p>线程本地变量命名为 <code>self-&gt;foo</code>，<code>self-&gt;bar</code> 等，并且存在与特定的线程中。</p>
+
+<p>探针语句本地变量与 C 或 Swift 中的本地变量类似。对于中间结果来说很有用。</p>
+
+<p>在这个脚本中，当进入 syscall 时我们使用第一个探针语句来匹配。我们将当前时间戳赋值给线程本地变量 <code>self-&gt;ts</code>：</p>
+
+<p>```
+syscall:::entry
+/ execname == &ldquo;App Store&rdquo; /
+{</p>
+
+<pre><code>self-&gt;ts = timestamp;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>第二个语句在从 syscall 中返回时匹配。这个调用将和进入时是同一个线程，因此可以确定，即使有多个线程在同一时间进行系统调用，<code>self-&gt;ts</code> 也具有我们所期待的值。</p>
+
+<p>我们在谓词里加入了 <code>self-&gt;ts != 0</code> 来确保即使脚本是在应用处于系统调用中的时候被追加的，它也能正确运行。否则，<code>timestamp - self-&gt;ts</code> 将会是一个非常大的值，因为这时 <code>self-&gt;ts</code> 是还没有被设置的初始值：</p>
+
+<p>```
+syscall:::return
+/ execname == &ldquo;App Store&rdquo; &amp;&amp; self->ts != 0 /
+{</p>
+
+<pre><code>@totals[probefunc] = sum(timestamp - self-&gt;ts);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>通过 <a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-variables/index.html" title="Dynamic Tracing Guide, Variables">Dynamic Tracing Guide, “Variables.”</a> 可以查看关于变量的核心知识。</p>
+
+<p><a name="Aggregations"></a></p>
+
+<h3>集积 (Aggregation)</h3>
+
+<p>这行代码使用了集积：</p>
+
+<p><code>
+@totals[probefunc] = sum(timestamp - self-&gt;ts);
+</code></p>
+
+<p>这是 DTrace 的一个极其强大的特性。</p>
+
+<p>我们将 <code>totals</code> 称为集积变量。变量名前面的 <code>@</code> 将它转变为集积行为。<code>probefunc</code> 是一个内置变量 &ndash; 它是探针函数的名字。对于 <code>syscall</code> 探针，<code>probefunc</code> 是正在运行的系统调用的名字。</p>
+
+<p><code>sum</code> 是集积函数。在这个例子中，该集积用来计算每一个 <code>probefunc</code> 对应的 <code>timestamp - self-&gt;ts</code> 的和。</p>
+
+<p><a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-aggs-trunc/index.html">DTrace Guide</a> 展示了一个小例子，该例子使用集积来打印每秒钟调用系统最多的 10 个应用的系统调用的数量。</p>
+
+<p>```</p>
+
+<h1>pragma D option quiet</h1>
+
+<p>BEGIN
+{</p>
+
+<pre><code>last = timestamp;
+</code></pre>
+
+<p>}</p>
+
+<p>syscall:::entry
+{</p>
+
+<pre><code>@func[execname] = count();
+</code></pre>
+
+<p>}</p>
+
+<p>tick-10sec
+{</p>
+
+<pre><code>trunc(@func, 10);
+normalize(@func, (timestamp - last) / 1000000000);
+printa(@func);
+clear(@func);
+last = timestamp;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>在大多数空闲的 OS X 上，可能会显示如下:</p>
+
+<p>```
+kextd                                                             7
+ntpd                                                              8
+mds_stores                                                       19
+cfprefsd                                                         20
+dtrace                                                           20
+UserEventAgent                                                   34
+launchd                                                          42
+Safari                                                          109
+cloudd                                                          115
+com.apple.WebKi                                                 177</p>
+
+<p>mds                                                               8
+Wire                                                              8
+Terminal                                                         10
+com.apple.iClou                                                  15
+dtrace                                                           20
+securityd                                                        20
+tccd                                                             37
+syncdefaultsd                                                    98
+Safari                                                          109
+com.apple.WebKi                                                 212
+```</p>
+
+<p>我们看到 Safari，WebKit 和 <code>cloudd</code> 很活跃。</p>
+
+<p>下表为所有集积函数:</p>
+
+<p><code>
+Function Name     | Result
+------------------|---------
+count             | Number of times called
+sum               | Sum of the passed in values
+avg               | Average of the passed in values
+min               | Smallest of the passed in values
+max               | Largest of the passed in values
+lquantize         | Linear frequency distribution
+quantize          | Power-of-two frequency distribution
+</code></p>
+
+<p><code>quantize</code> 和 <code>lquantize</code> 函数可以给出一个关于传入的数量的概览:</p>
+
+<p>```
+ip:::send
+{</p>
+
+<pre><code>@bytes_sent[execname] = quantize(args[2]-&gt;ip_plength);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上面的代码会输出类似这样的结果:</p>
+
+<p>```
+discoveryd</p>
+
+<pre><code>     value  ------------- Distribution ------------- count    
+        16 |                                         0        
+        32 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 2        
+        64 |                                         0        
+</code></pre>
+
+<p>syncdefaultsd</p>
+
+<pre><code>     value  ------------- Distribution ------------- count    
+       256 |                                         0        
+       512 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 4        
+      1024 |                                         0        
+</code></pre>
+
+<p>kernel_task</p>
+
+<pre><code>     value  ------------- Distribution ------------- count    
+         8 |                                         0        
+        16 |@@@@@@@@@@@@@@                           37       
+        32 |@@@@@@@@@@@@@@@@@@@@@@@@@@               67       
+        64 |                                         0        
+</code></pre>
+
+<p>com.apple.WebKi</p>
+
+<pre><code>     value  ------------- Distribution ------------- count    
+        16 |                                         0        
+        32 |@@@@@@@@@@@@@@@@                         28       
+        64 |@@@@                                     7        
+       128 |@@@@                                     6        
+       256 |                                         0        
+       512 |@@@@@@@@@@@@@@@@                         27       
+      1024 |                                         0       
+</code></pre>
+
+<p>```</p>
+
+<p>查看 <a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-aggs-2/index.html">Dynamic Tracing Guide 的示例</a>来了解如何使用 <code>lquantize</code>。</p>
+
+<h3>联合数组</h3>
+
+<p>不管名字如何，D 语言中的数组更类似 Swift 或 Objective-C 中的字典。另外，它们都是可变的。</p>
+
+<p>我们可以这样定义一个联合数组:</p>
+
+<p><code>
+int x[unsigned long long, char];
+</code></p>
+
+<p>然后我们可以给它赋值:</p>
+
+<p>```
+BEGIN
+{</p>
+
+<pre><code>x[123ull, ’a’] = 456;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>对于 Wire 应用，我们想要追踪 <a href="https://developer.apple.com/library/ios/documentation/Foundation/Reference/NSURLSessionTask_class/index.html" title="ADC: NSURLSessionTask">NSURLSessionTask</a> 实例的往复时间。当开始一个任务时，我们触发一个<a href="#staticProbes">静态定义的探针</a>，当完成时还有另一个探针。我们可以写一个简单的脚本：</p>
+
+<p>```
+syncengine_sync$target:::operation_loop_enqueue
+/ arg0 == 4 /
+{</p>
+
+<pre><code>start_transport_request_timestamp[arg1] = timestamp;
+</code></pre>
+
+<p>}</p>
+
+<p>syncengine_sync$target:::operation_loop_enqueue
+/ arg0 == 6 &amp;&amp; start_transport_request_timestamp[arg1] != 0 /
+{</p>
+
+<pre><code>@time["time for transport request round-trip"] = quantize(timestamp - start_transport_request_timestamp[arg1]);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>我们传入 <a href="https://developer.apple.com/library/ios/documentation/Foundation/Reference/NSURLSessionTask_class/index.html#//apple_ref/occ/instp/NSURLSessionTask/taskIdentifier" title="-[NSURLSessionTask taskIdentifer]"><code>taskIdentifer</code></a> 作为 <code>arg1</code>，任务开始时 <code>arg0</code> 被设置为 4，任务完成时被设置为 6。</p>
+
+<p>正如我们在第一个<a href="#ATimingExample">定时的例子</a>中看到的那样，联合数组在为传入语句的 <code>enum</code> 值提供描述时也非常有用。</p>
+
+<h2>探针和提供者</h2>
+
+<p>让我们回过头看看可用的探针。</p>
+
+<p>可以使用如下的命令来获得一个所有可用探针的列表:</p>
+
+<p><code>
+sudo dtrace -l | awk '{ match($2, "([a-z,A-Z]*)"); print substr($2, RSTART, RLENGTH); }' | sort -u
+</code></p>
+
+<p>在 OS X 10.10 中有 79 个提供者。其中许多都与 kernel 和系统调用相关。</p>
+
+<p>其中一些提供者是 <a href="https://docs.oracle.com/cd/E23824_01/html/E22973/gkyal.html" title="Oracle: DTrace Providers">Dynamic Tracing Guide</a> 文档中的原始集合中的一部分。让我们看看其中一些我们可用的。</p>
+
+<h3><code>dtrace</code> 提供者</h3>
+
+<p>我们<a href="#ATimingExample">之前</a>提到过 <code>BEGIN</code> 和 <code>END</code> 探针。当以安静模式运行 DTrace 时，<code>dtrace:::END</code> 对于输出摘要尤其有用。错误发生时还有 <code>ERROR</code> 探针。</p>
+
+<h3><code>profile</code> 提供者</h3>
+
+<p><a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-profile/index.html" title="profile Provider"><code>profile</code> 提供者</a>可以用来在某种程度上采样，这对于 Instruments 的用户来说应该非常熟悉。</p>
+
+<p>我们可以以 1001 赫兹的频率来采样栈深度：</p>
+
+<p>```
+profile-1001
+/pid == $1/
+{</p>
+
+<pre><code>@proc[execname] = lquantize(stackdepth, 0, 20, 1);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>输出会是这样:</p>
+
+<p>```
+Safari</p>
+
+<pre><code>     value  ------------- Distribution ------------- count    
+       &lt; 0 |                                         0        
+         0 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     704      
+         1 |@                                        12       
+         2 |@@                                       30       
+         3 |@                                        17       
+         4 |                                         7        
+         5 |                                         6        
+         6 |                                         1        
+         7 |                                         2        
+         8 |                                         1        
+         9 |                                         7        
+        10 |                                         5        
+        11 |                                         1        
+        12 |                                         0        
+</code></pre>
+
+<p>```</p>
+
+<p>类似的，<code>tick-</code> 探针会每隔固定的时间间隔，以很高打断的级别触发。<code>profile-</code> 探针会在所有 CPU 上触发，而 <code>tick-</code> 每个间隔只会在一个 CPU 上。我们在上面的<a href="#Aggregations">集积</a>例子中使用了 <code>tick-10sec</code> 。</p>
+
+<h3><code>pid</code> 提供者</h3>
+
+<p><code>pid</code> 是一个有点野蛮的提供者。大多数时候，我们真的应该使用下面将要提到的<a href="#staticProbes">静态探针</a>。</p>
+
+<p><code>pid</code> 是进程标识 (process identifier) 的缩写。它可以让我们在进入和退出进程时进行探测。这在<strong>大多数</strong>情况下是可行的。注意函数的进入和返回并不总是可以很好地界定，尤其是在<strong>尾调用优化 (tail-call optimization)</strong>时。另外还有某些函数并不需要创建栈帧等等情况。</p>
+
+<p>当你不能改变代码来增加<a href="#staticProbes">静态探针</a>时，<code>pid</code> 是一个强大的工具。</p>
+
+<p>你可以追踪任何可见的函数。例如这个探针:</p>
+
+<p><code>
+pid123:libSystem:printf:return
+</code></p>
+
+<p>这个探针会附加到进程标识 (PID) 为 123 的进程中的 <code>printf</code> 函数。</p>
+
+<h3><code>objc</code> 提供者</h3>
+
+<p>与 <code>pid</code> 提供者直接对应的是 <code>objc</code> 提供者。它为 Objective-C 方法的进入和退出提供了探针。还是使用<a href="#staticProbes">静态探针</a>可以提供更好的灵活性。</p>
+
+<p><code>objc</code> 探针的格式如下：</p>
+
+<p><code>
+objcpid:[class-name[(category-name)]]:[[+|-]method-name]:[name]
+</code></p>
+
+<p>举个例子：</p>
+
+<p><code>
+objc207:NSTableView:-*:entry
+</code></p>
+
+<p>将匹配进程号 207 中的 <code>NSTableView</code> 的所有实例方法条目。因为冒号 (<code>:</code>) 在 DTrace 中表示探针的指定方案，因此 Objective-C 中方法名里的冒号需要用一个问号 (<code>?</code>) 来替代。比如要匹配 <code>-[NSDate dateByAddingTimeInterval:]</code> 的话，可以这么写：</p>
+
+<p><code>
+objc207:NSDate:-dateByAddingTimeInterval?:entry
+</code></p>
+
+<p>通过查看 <a href="https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/dtrace.1.html" title="dtrace - generic front-end to the DTrace facility"><code>dtrace(1)</code> 帮助页面</a>可以获得更多详细信息。</p>
+
+<h3><code>io</code> 提供者</h3>
+
+<p>为了追踪与磁盘输入输出相关的活动，<a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-io/index.html" title="io Provider"><code>io</code> 提供者</a> 定义了 6 个探针:</p>
+
+<p><code>
+start
+done
+wait-start
+wait-done
+journal-start
+journal-done
+</code></p>
+
+<p><a href="https://docs.oracle.com/cd/E19253-01/817-6223/chp-io/index.html" title="io Provider">Oracle 文档</a>中的例子展示了如何使用：</p>
+
+<p>```</p>
+
+<h1>pragma D option quiet</h1>
+
+<p>BEGIN
+{</p>
+
+<pre><code>printf("%10s %58s %2s\n", "DEVICE", "FILE", "RW");
+</code></pre>
+
+<p>}</p>
+
+<p>io:::start
+{</p>
+
+<pre><code>printf("%10s %58s %2s\n", args[1]-&gt;dev_statname,
+        args[2]-&gt;fi_pathname, args[0]-&gt;b_flags &amp; B_READ ? "R" : "W");
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上面的例子会输出类似这样的结果：</p>
+
+<p><code>
+??                   ??/com.apple.Safari.savedState/data.data  R
+??            ??/Preferences/com.apple.Terminal.plist.kn0E7LJ  W
+??                                            ??/vm/swapfile0  R
+??              ??/Preferences/com.apple.Safari.plist.jEQRQ5N  W
+??           ??/Preferences/com.apple.HIToolbox.plist.yBPXSnY  W
+??       ??/fsCachedData/F2BF76DB-740F-49AF-94DC-71308E08B474  W
+??                           ??/com.apple.Safari/Cache.db-wal  W
+??                           ??/com.apple.Safari/Cache.db-wal  W
+??       ??/fsCachedData/88C00A4D-4D8E-4DD8-906E-B1796AC949A2  W
+</code></p>
+
+<h1><code>ip</code> 提供者</h1>
+
+<p><a href="https://wikis.oracle.com/display/DTrace/ip+Provider" title="ip Provider"><code>ip</code> 提供者</a>有 <code>send</code> 和 <code>receive</code> 两个探针。任何时候数据通过 IP 被发送或接收都会触发。参数 <code>arg0</code> 到 <code>arg5</code> 提供了与发送或接收的 IP 包所相关的 kernel 结构体的访问入口。</p>
+
+<p>可以将二者放入非常强大的网络调试工具中。它可以使 <code>tcpdump(1)</code> 的看起来像过时的玩意。<code>ip</code> 提供者可以让我们在需要的时候精确的输出我们所需要的信息。</p>
+
+<p>查看<a href="https://wikis.oracle.com/display/DTrace/ip+Provider" title="ip Provider">文档</a>获得更多很棒的示例。</p>
+
+<p><a name="staticProbes"></a></p>
+
+<h2>定义自己的静态探针</h2>
+
+<p>DTrace 允许我们创建自己的探针，通过这个，我们可以为我们自己的 app 释放 DTrace 的真正威力。</p>
+
+<p>这些在 DTrace 中被称作<strong>静态探针</strong>。我们在<a href="#ATimingExample">第一个例子</a>中曾经简短的提到过。<a href="https://itunes.apple.com/app/wire/id931134707?mt=12">Wire</a> 定义了自己的提供者和探针：</p>
+
+<p>```
+provider syncengine_sync {</p>
+
+<pre><code>probe strategy_go_to_state(int);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>然后我们在代码中调用探针:</p>
+
+<p>```objc
+&ndash; (void)goToState:(ZMSyncState *)state
+{</p>
+
+<pre><code>[self.currentState didLeaveState];
+self.currentState = state;
+SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE(state.identifier);
+[self.currentState didEnterState];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>一个可能的争论就是我们本来可以干脆直接使用 <code>objc</code> 提供者；使用我们自己的探针可以更具灵活性。以后我们可以修改 Objective-C 代码而不影响 DTrace 探针。</p>
+
+<p>另外，静态探针给我们提供更方便的参数访问方式。通过上面我们可以看到我们如何利用它来追踪时间和输出日志。</p>
+
+<p>DTrace 静态探针的强大之处在于给我们提供了稳定的接口来调试我们的代码，并且即便是在生产代码中这个接口也是存在的。即使对于应用的生产版本，当有人看到奇怪的行为，我们也可以给正在运行的应用附加一段 DTrace 脚本。DTrace 的灵活性还可以让我们将同一个探针用于其他目的。</p>
+
+<p>我们可以将 DTrace 作为日志工具使用。还可以用来收集与时间，网络，请求等有关的详细的量化信息。</p>
+
+<p>我们可以将探针留在生产代码中的原因是探针是<strong>零损耗</strong>的，或者公平点说，相当于一个测试和分支的 CPU 指令。</p>
+
+<p>下面来看看如何将静态探针加入到我们的工程。</p>
+
+<h3>提供者描述</h3>
+
+<p>首先我们需要创建一个 <code>.d</code> 文件并定义提供者和探针。如果我们创建了一个 <code>provider.d</code> 文件并写入以下内容，会得到两个提供者:</p>
+
+<p>```
+provider syncengine_sync {</p>
+
+<pre><code>probe operation_loop_enqueue(int, int, intptr_t);
+probe operation_loop_push_channel_data(int, int);
+probe strategy_go_to_state(int);
+probe strategy_leave_state(int);
+probe strategy_update_event(int, int);
+probe strategy_update_event_string(int, char *);
+</code></pre>
+
+<p>};</p>
+
+<p>provider syncengine_ui {</p>
+
+<pre><code>probe notification(int, intptr_t, char *, char *, int, int, int, int);
+</code></pre>
+
+<p>};
+```</p>
+
+<p>提供者是 <code>syncengine_sync</code> 和 <code>syncengine_ui</code>。在每个提供者中，我们定义了一组探针。</p>
+
+<h3>创建头文件</h3>
+
+<p>现在我们需要将 <code>provider.d</code> 加入到 Xcode 的构建目标中。确保将类型设置为 <em>DTrace source</em>，这十分重要。Xcode 现在会在构建时自动处理。在这个步骤中，DTrace 会创建一个对应的 <code>provider.h</code> 头文件，我们可以引入它。将 <code>provider.d</code> 同时加入 Xcode 工程和相应的构建目标非常重要。</p>
+
+<p>在处理时，Xcode 会调用 <code>dtrace(1)</code> 工具:</p>
+
+<p><code>
+dtrace -h -s provider.d
+</code></p>
+
+<p>这会生成相应的头文件。该文件最后会出现在 <a href="https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef/1-Build_Setting_Reference/build_setting_ref.html#//apple_ref/doc/uid/TP40003931-CH3-SW43" title="DERIVED_FILE_DIR"><code>DERIVED_FILE_DIR</code></a> 中。可以通过以下方式在任何工程内的源文件中引用</p>
+
+<p>```</p>
+
+<h1>import &ldquo;provider.h&rdquo;</h1>
+
+<p>```</p>
+
+<p>Xcode 有一个内置的所谓 <strong>build rule</strong> 来处理 DTrace 提供者描述。比较 <a href="http://objccn.io/issue-6-1">objc.io Build 过程</a>的内容来获取关于构建规则和构建处理的更多的信息。</p>
+
+<h3>增加探针</h3>
+
+<p>对于每一个静态探针，头文件会包含两个宏:</p>
+
+<p><code>
+PROVIDER_PROBENAME()
+PROVIDER_PROBENAME_ENABLED()
+</code></p>
+
+<p>第一个是探针本身。第二个会在探针关闭时取值为 0。</p>
+
+<p>DTrace 探针自己本身在没被启用时是零消耗的，也就是说只要没有附加在探针上的东西，它们就不会产生消耗。然而有时，我们可能想要提前判断或将数据发送给探针之前做一些预处理。在这些不太常见的情况下，我们可以使用 <code>_ENABLED()</code> 宏：</p>
+
+<p>```
+if (SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE_ENABLED()) {</p>
+
+<pre><code>argument = /* Expensive argument calculation code here */;
+SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE(argument);
+</code></pre>
+
+<p>};
+```</p>
+
+<h3>包装 DTrace 探针</h3>
+
+<p>代码可读性非常重要。随着增加越来越多的探针到代码中，我们需要确保代码不会因此而变得乱七八糟和难以理解。毕竟探针的目的是帮助我们而不是将事情变得更复杂。</p>
+
+<p>我们所需要做的就是增加另一个简单的包装器。这些包装器既使代码的可读性更好了一些，也增加了 <code>if (…_ENABLED*())</code> 检查。</p>
+
+<p>回到状态机器的例子中，我们的探针宏是这样的：</p>
+
+<p><code>
+SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE(state);
+</code></p>
+
+<p>为了使它变得更简单，我们创建另一个头文件并定义：</p>
+
+<p>```
+static inline void ZMTraceSyncStrategyGoToState(int d) {</p>
+
+<pre><code>SYNCENGINE_SYNC_STRATEGY_GO_TO_STATE(d);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>有了这个，之后我们就调用：</p>
+
+<p><code>
+ZMTraceSyncStrategyGoToState(state);
+</code></p>
+
+<p>这看起来有点取巧，但是<a href="https://en.wikipedia.org/wiki/CamelCase">驼峰式命名</a>确实能在混合普通的 Objective-C 和 Swift 代码风格方面做得更好。</p>
+
+<p>更进一步的，如果我们看到上面定义的</p>
+
+<p>```
+provider syncengine_ui {</p>
+
+<pre><code>probe notification(int, intptr_t, char *, char *, int, int, int, int);
+</code></pre>
+
+<p>};
+```</p>
+
+<p>有一长串的参数。在 Wire 中，我们用这个来记录 UI 通知日志。</p>
+
+<p>这个探针有一长串的参数。我们决定只要一个探针来处理许多不同通知，这些通知都是同步代码发给 UI 用以提醒变化的。第一个参数，<code>arg0</code>，定义了是什么通知，第二个参数定义了 <code>NSNotification</code> 的 <code>object</code>。在这使得我们的 DTrace 脚本可以将感兴趣的范围限定在某几个指定的通知中。</p>
+
+<p>剩余的参数定义根据预先的通知不同可以稍微宽松些，而且对于各个单独情况我们有多个包装函数。当想要传入两个 <code>NSUUID</code> 对象的情况，我们类似这样来调用包装函数：</p>
+
+<p>```
+ZMTraceUserInterfaceNotification_UUID(1, note.object,</p>
+
+<pre><code>conversation.remoteIdentifier, participant.user.remoteIdentifier,
+    wasJoined, participant.isJoined, currentState.connectionState, 0);
+</code></pre>
+
+<p>```</p>
+
+<p>这个包装函数是这样定义的:</p>
+
+<p>```
+static inline void ZMTraceUserInterfaceNotification_UUID(int d, NSObject <em>obj, NSUUID </em>remoteID1, NSUUID *remoteID2, int e, int f, int g, int h) {</p>
+
+<pre><code>if (SYNCENGINE_UI_NOTIFICATION_ENABLED()) {
+    SYNCENGINE_UI_NOTIFICATION(d, (intptr_t) (__bridge void *) obj, remoteID1.transportString.UTF8String, remoteID2.transportString.UTF8String, e, f, g, h);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>正如之前提到的，我们有两个目的。第一，不让类似 <code>(intptr_t) (__bridge void *)</code> 这样的代码把我们的代码搞的乱七八糟。另外，除非因为附加到探针的时候有需要，其他时候我们无需花费 CPU 周期将一个 <code>NSUUID</code> 转换为 <code>NSString</code> 并进一步转换为 <code>char const *</code>。</p>
+
+<p>根据这个模式，我们可以定义多个包装器 / 辅助函数来复用相同的 DTrace 探针。</p>
+
+<h3>DTrace 和 Swift</h3>
+
+<p>像这样包装 DTrace 探针可以让我们整合 Swift 和 DTrace 静态探针。<code>static line</code> 函数现在可以在 Swift 代码中直接调用。</p>
+
+<p>```glsl
+func goToState(state: ZMSyncState) {</p>
+
+<pre><code>currentState.didLeaveState()
+currentState = state
+currentState.didEnterState()
+ZMTraceSyncStrategyGoToState(state.identifier)
+</code></pre>
+
+<p>}
+```</p>
+
+<h2>DTrace 如何工作</h2>
+
+<p>D 语言是编译型语言。当运行 <code>dtrace(1)</code> 工具时，我们传入的脚本被编译成字节码。接着字节码被传入 kernel。在 kernel 中有一个解释器来运行这些字节码。</p>
+
+<p>这就是为什么这种编程语言可以保持简单。没人希望 DTrace 脚本中的 bug 引起 kernel 的死循环并导致系统挂起。</p>
+
+<p>当将静态探针加入可执行程序 (一个 app 或 framework)，它们被作为 <code>S_DTRACE_DOF</code> (Dtrace Object Format) 部分被加入，并且在程序运行时被加载进 kernel。这样 DTrace 就知道当前的静态探针。</p>
+
+<h2>最后的话</h2>
+
+<p>毫无疑问 DTrace 非常强大和灵活。然而需要注意的是 DTrace 并不是一些经过考验和真正的工具的替代品，如 <code>malloc_history</code>，<code>heap</code> 等。记得始终使用正确的工具。</p>
+
+<p>另外，DTrace 并不是魔法。你仍然需要知道你要解决的问题所在。</p>
+
+<p>这就是说，DTrace 可以使你的开发技能和能力达到一个新的水准。它可以让你在生产代码中追踪那些很难或不可能定位的问题。</p>
+
+<p>如果你的代码中有 <code>#ifdef TRACING</code> 或 <code>#if LOG_LEVEL == 1</code>，使用 DTrace 替换它们或许是很好的主意。</p>
+
+<p>记得查看 <a href="https://docs.oracle.com/cd/E23824_01/html/E22973/toc.html" title="Oracle Solaris Dynamic Tracing Guide">Dynamic Tracing Guide</a> (<a href="https://docs.oracle.com/cd/E23824_01/pdf/E22973.pdf" title="Oracle Solaris Dynamic Tracing Guide">PDF version</a>)。并且在你系统的 <code>/usr/share/examples/DTTk</code> 文件夹中获取更多的灵感。</p>
+
+<p>调试快乐！</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Metal]]></title>
@@ -1108,308 +2071,6 @@ children: &lt;none&gt;****
 <p>除了在你自己的设备上调试，考虑使用苹果服务上的调试服务可能也会有用。<a href="https://developer.icloud.com/">developer.icloud.com</a> 上有一个特殊的 web 应用，它允许你浏览存储在开放性容器内的所有信息和当前传输状态。</p>
 
 <p>过去的几个月，苹果还提供了安全地在服务端对所有已连接设备进行 iCloud 重置的方法。更多信息可查看 <a href="http://support.apple.com/kb/HT5824">support document</a>。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[自定义控件]]></title>
-    <link href="http://objcio.com/blog/2014/03/10/custom-controls/"/>
-    <updated>2014-03-10T10:27:00+08:00</updated>
-    <id>http://objcio.com/blog/2014/03/10/custom-controls</id>
-    <content type="html"><![CDATA[<p>本文由 <a href="http://objcio.com"><strong>Migrant</strong></a> 翻译自 <a href="http://www.objc.io/issue-3/custom-controls.html">Custom Controls</a>，转载请注明出处。</p>
-
-<p>本文将讨论一些自定义视图和控件的诀窍和技巧。我们先对UIKit已经提供给我们的控件做一个概览，介绍一些渲染技巧。随后我们会深入到视图和它们的所有者之间的通信策略，并简略探讨辅助功能，本地化和测试。</p>
-
-<!--more-->
-
-
-<h2>视图层次概览</h2>
-
-<p>看一下UIView的子视图，可以看到3个基本类:响应者，视图和控件。我们快速重温一下它们。</p>
-
-<h3>UIResponder</h3>
-
-<p><code>UIResponder</code>是<code>UIView</code>的父类。响应这能够处理触摸，手势，远程控制等事件。之所以它是一个单独的类而没有合并到<code>UIView</code>中，是因为<code>UIResponder</code>有更多的子类，最明显的就是<code>UIApplication</code>和<code>UIViewController</code>。通过重写<code>UIResponder</code>的方法，可以决定一个类是否可以成为第一响应者(例如当前输入焦点元素)。</p>
-
-<p>当触摸或手势等交互行为发生，它们被发送给第一响应者(通常是一个视图)。如果第一响应者没有处理，则该行为沿着响应者链到达视图控制器，如果行为仍然没有被处理，则它继续传递给应用。如果想检测晃动手势，可以根据需要在这3层中的任意位置处理。</p>
-
-<p><code>UIResponder</code>还允许自定义输入方法，通过<code>inputAccessoryView</code>向键盘添加辅助视图或使用<code>inputView</code>提供一个完全自定义的键盘。</p>
-
-<h3>UIView</h3>
-
-<p><code>UIView</code>的子类处理所有跟内容绘制有关的事情和触摸。只要写过"Hello, World"应用的人都知道视图，但我们重申一些技巧点:</p>
-
-<p>一个普遍的错误概念是视图的区域是由它的frame定义的。实际上frame是一个派生属性，主要由center和bounds合成而来。不使用Auto Layout时，大多数人使用frame来定位改变视图的大小。作为警告，<a href="https://developer.apple.com/library/ios/#documentation/UIKit/Reference/UIView_Class/UIView/UIView.html#//apple_ref/occ/instp/UIView/frame">官方文档</a>特别详细说明了一个注意事项:</p>
-
-<blockquote><p>If the transform property is not the identity transform, the value of this property is undefined and therefore should be ignored.</p></blockquote>
-
-<p>另一个允许向视图添加交互的方法是使用手势识别器。注意它们并不工作在响应者上，而只在视图及其子类上工作。</p>
-
-<h3>UIControl</h3>
-
-<p><code>UIControl</code>建立在视图上，增加了更多的交互支持。最重要的是，它增加了target/action模式。看一下具体的子类，可以看到按钮，日期选择器，文本输入框，等等。创建交互控件时，你通常想要子类化一个<code>UIControl</code>。一些常见但并不是控件的类是工具栏按钮(虽然也支持target/action)和文本视图(这里需要你使用代理来获得通知)。</p>
-
-<h2>渲染</h2>
-
-<p>现在，我们接下去来到可见的部分:自定义渲染。正如Daniel在他的<a href="http://www.objc.io/issue-3/moving-pixels-onto-the-screen.html">文章</a>中提到的，你可能想避免在CPU上做渲染而将其丢给GPU。这里有一条经验:尽量避免<code>drawRect:</code>，而使用现有的视图构建自定义视图。</p>
-
-<p>通常最快速的渲染方法是使用图片视图。例如，假设你想画一个带有边框的圆形头像，像下面图片中这样:</p>
-
-<p><img src="/images/posts/2014-03-10-custom-controls.png" alt="" /></p>
-
-<p>为了实现这个，我们用以下的代码创建了一个图片视图的子类:</p>
-
-<p>```objc
-// called from initializer
-&ndash; (void)setupView
-{</p>
-
-<pre><code>self.clipsToBounds = YES;
-self.layer.cornerRadius = self.bounds.size.width / 2;
-self.layer.borderWidth = 3;
-self.layer.borderColor = [UIColor darkGrayColor].CGColor;
-</code></pre>
-
-<p>}
-```</p>
-
-<p>我鼓励各位读者深入了解<code>CALayer</code>及其属性，因为你用它能实现的大多数事情会比用Core Graphics自己画要快。然而一如既往，剖析自己的代码是十分重要的。</p>
-
-<p>把可拉伸的图片和图片视图一起使用也可以极大的提高效率。在<a href="http://robots.thoughtbot.com/post/33427366406/designing-for-ios-taming-uibutton">Taming UIButton</a>这个帖子中，Reda Lemeden探索了几种不同的绘图方法。在文章结尾处有一个很有价值的帖子:<a href="https://news.ycombinator.com/item?id=4645585">a comment by Andy Matuschak</a>，解释了可拉伸图片是这些技术中最快的。原因是可拉伸图片在CPU和GPU之间的数据转移量最小，并且这些图片的绘制是经过高度优化的。</p>
-
-<p>处理图片时，你也可以让GPU为你工作来代替使用Core Graphics。使用Core Image，你不必用CPU做任何的工作就可以在图片上建立复杂的效果。你可以直接在OpenGL上下文上直接渲染，所有的工作都在GPU上完成。</p>
-
-<h3>自定义绘制</h3>
-
-<p>如果决定了采用自定义绘制，有几种不同的选项可供选择。如果可能的话，看看是否可以生成一张图片并在内存和磁盘上缓存起来。如果内容是动态的，也许你可以使用Core Animation，如果还是行不通，使用Core Graphics。如果你真的想要接近底层，使用GLKit和原生OpenGL也不是那么难，但是需要做很多工作。</p>
-
-<p>如果你真的选择了重写<code>drawRect:</code>，确保检查内容模式。默认的模式是将内容缩放以填充视图的范围，并且当视图的frame改变时并不会重新绘制。</p>
-
-<h2>自定义交互</h2>
-
-<p>正如之前所说的，自定义控件的时候，你几乎一定会扩展一个UIControl的子类。在你的子类里，可以使用目标-动作机制触发事件，如下面的例子:</p>
-
-<p><code>objc
-[self sendActionsForControlEvents:UIControlEventValueChanged];
-</code></p>
-
-<p>为了响应触摸，你可能更倾向于使用手势识别。然而如果想要更接近底层，仍然可以重写<code>touchesBegan</code>，<code>touchesMoved</code>和<code>touchesEnded</code>方法来访问原始的触摸行为。但虽说如此，创建一个手势识别的子类来把手势处理相关的逻辑从你的视图或者视图控制器中分离出来，在很多情况下都是一种更合适的方式。</p>
-
-<p>创建自定义控件时所面对的一个普遍的设计问题是向拥有它们的类中回传返回值。比如，假设你创建了一个绘制交互饼状图的自定义控件，想知道用户何时选择了其中一个部分。你可以用很多种不同的方法来解决这个问题，比如通过目标-动作模式，代理，block或者KVO，甚至通知。</p>
-
-<h3>目标-动作</h3>
-
-<p>老式的，通常也是最方便的方法是使用目标-动作。在用户选择后你可以在自定义的视图中做类似这样的事情:</p>
-
-<p><code>objc
-[self sendActionsForControlEvents:UIControlEventValueChanged];
-</code></p>
-
-<p>如果有一个视图控制器在管理这个视图，需要:</p>
-
-<p>```objc
-&ndash; (void)setupPieChart
-{</p>
-
-<pre><code>[self.pieChart addTarget:self 
-                  action:@selector(updateSelection:)
-        forControlEvents:UIControlEventValueChanged];
-</code></pre>
-
-<p>}</p>
-
-<ul>
-<li>(void)updateSelection:(id)sender
-{
-  NSLog(@&ldquo;%@&rdquo;, self.pieChart.selectedSector);
-}
-```</li>
-</ul>
-
-
-<p>这么做的好处是在自定义视图子类中需要做的事情很少，并且自动获得多目标支持。</p>
-
-<h3>代理</h3>
-
-<p>如果你需要更多的控制从视图发送到视图控制器的消息，通常使用代理模式。在我们的饼状图中，代码看起来大概是这样:</p>
-
-<p><code>objc
-[self.delegate pieChart:self didSelectSector:self.selectedSector];
-</code></p>
-
-<p>在视图控制器中，你要写如下代码:</p>
-
-<p>```objc
-@interface MyViewController <PieChartDelegate></p>
-
-<p> &hellip;</p>
-
-<ul>
-<li><p>(void)setupPieChart
-{
-  self.pieChart.delegate = self;
-}</p></li>
-<li><p>(void)pieChart:(PieChart<em>)pieChart didSelectSector:(PieChartSector</em>)sector
-{
-  // Handle the sector
-}
-```</p></li>
-</ul>
-
-
-<p>当你想要做更多复杂的工作而不仅仅是通知所有者值发生了变化时，这么做显然更合适。不过虽然大多数开发人员可以非常快速的实现自定义代理，但这种方式仍然有一些缺点:你有必要检查代理是否实现了你想要调用的方法(使用<code>respondsToSelector:</code>)，最重要的，通常你只有一个代理(或者需要创建一个代理数组)。也就是说，一旦视图所有者和视图之间的通信变得稍微复杂，我们几乎总是会采取这种模式。</p>
-
-<h3>Block</h3>
-
-<p>另一个选择是使用block。再一次用饼状图举例，代码看起来大概是这样:</p>
-
-<p>```objc
-@interface PieChart : UIControl</p>
-
-<p>@property (nonatomic,copy) void(^selectionHandler)(PieChartSection* selectedSection);</p>
-
-<p>@end
-```</p>
-
-<p>在选取行为的代码中，只需要执行它。在此之前检查一下block是否被赋值非常重要，因为执行一个未被赋值的block会使程序崩溃。</p>
-
-<p>```objc
-if (self.selectionHandler != NULL) {</p>
-
-<pre><code>self.selectionHandler(self.selectedSection);
-</code></pre>
-
-<p>}
-```</p>
-
-<p>这种方法的好处是可以把相关的代码在视图控制器中整合:</p>
-
-<p>```objc
-&ndash; (void)setupPieChart
-{</p>
-
-<pre><code>self.pieChart.selectionHandler = ^(PieChartSection* section) {
-    // Do something with the section
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>就像代理，每个动作通常只有一个block。另一个重要的限制是不要形成引用循环。如果你的视图控制器持有饼状图的强引用，饼状图持有block，block又持有视图控制器，就形成了一个引用循环。只要在block中引用self就会造成这个错误。所以通常代码会以这样结束:</p>
-
-<p>```objc
-__weak id weakSelf = self;
-self.pieChart.selectionHandler = ^(PieChartSection* section) {</p>
-
-<pre><code>MyViewController* strongSelf = weakSelf;
-[strongSelf handleSectionChange:section];
-</code></pre>
-
-<p>}
-```</p>
-
-<p>一旦block中的代码要失去控制(比如block中要处理的事情太多，导致block中的代码过多)，你还可以将它们抽离成独立的方法，而且你可能也已经使用了代理。</p>
-
-<h3>KVO</h3>
-
-<p>如果喜欢KVO，你也可以用它来观察。这有一点神奇而且没那么直接，但当应用中已经使用，它是很好的解耦的设计模式。在饼状图类中，编写代码:</p>
-
-<p><code>objc
-self.selectedSegment = theNewSelectedSegment;
-</code></p>
-
-<p>当使用合成属性，KVO会拦截到该变化并发出通知。在视图控制器中，编写类似的代码:</p>
-
-<p>```objc
-&ndash; (void)setupPieChart
-{</p>
-
-<pre><code>[self.pieChart addObserver:self forKeyPath:@"selectedSegment" options:0 context:NULL];
-</code></pre>
-
-<p>}</p>
-
-<ul>
-<li>(void)observeValueForKeyPath:(NSString <em>)keyPath ofObject:(id)object change:(NSDictionary </em>)change context:(void *)context
-{
-  if(object == self.pieChart &amp;&amp; [keyPath isEqualToString:@&ldquo;selectedSegment&rdquo;]) {
-      // Handle change
-  }
-}
-```</li>
-</ul>
-
-
-<p>根据你的需要，在<code>viewWillDisappear:</code>或<code>dealloc</code>中，还需要移除观察者。对同一个对象设置多个观察者很容易造成混乱。有一些技术可以解决这个问题，比如<a href="https://github.com/ReactiveCocoa/ReactiveCocoa">ReactiveCocoa</a>或者更轻量级的<a href="https://github.com/th-in-gs/THObserversAndBinders">THObserversAndBinders</a>。</p>
-
-<h3>通知</h3>
-
-<p>作为最后一个选择，如果你想要一个非常松散的耦合，可以使用通知来使其他对象得知变化。对于饼状图来说你几乎肯定不想这样，不过为了讲解的完整，这里介绍如何去做。在饼状图的的头文件中:</p>
-
-<p><code>objc
-extern NSString* const SelectedSegmentChangedNotification;
-</code></p>
-
-<p>在实现文件中:</p>
-
-<p>```objc
-NSString* const SelectedSegmentChangedNotification = @&ldquo;selectedSegmentChangedNotification&rdquo;;</p>
-
-<p>&hellip;</p>
-
-<ul>
-<li>(void)notifyAboutChanges
-{
-  [[NSNotificationCenter defaultCenter] postNotificationName:SelectedSegmentChangedNotification object:self];
-}
-```</li>
-</ul>
-
-
-<p>现在订阅通知，在视图控制器中：</p>
-
-<p>```objc
-&ndash; (void)setupPieChart
-{</p>
-
-<pre><code>[[NSNotificationCenter defaultCenter] addObserver:self 
-                                       selector:@selector(segmentChanged:) 
-                                           name:SelectedSegmentChangedNotification
-                                          object:self.pieChart];
-</code></pre>
-
-<p>}</p>
-
-<p>&hellip;</p>
-
-<ul>
-<li>(void)segmentChanged:(NSNotification*)note
-{
-}
-```</li>
-</ul>
-
-
-<p>当添加了观察者，你可以不将饼状图作为参数<code>object</code>，而是传递<code>nil</code>，以接收所有饼状图对象发出的通知。就像KVO通知，你也需要在恰当的地方退订这些通知。</p>
-
-<p>这项技术的好处是完全的解耦。另一方面，你失去了类型安全，因为在回调中你得到的是一个通知对象，而不像代理，编译器无法检查通知发送者和接受者之间的类型是否匹配。</p>
-
-<h2>辅助功能</h2>
-
-<p>苹果官方提供的标准iOS控件均有辅助功能。这也是推荐用标准控件创建自定义控件的另一个原因。</p>
-
-<p>这或许可以作为一整期的主题，但是如果你编写自定义视图，<a href="http://developer.apple.com/library/ios/#documentation/UserExperience/Conceptual/iPhoneAccessibility/Accessibility_on_iPhone/Accessibility_on_iPhone.html#//apple_ref/doc/uid/TP40008785-CH100-SW3">Accessibility Programming Guide</a>说明了如何创建控件辅助功能。最为值得注意的是，如果有一个视图中有多个需要辅助功能的元素，但它们并不是该视图的子视图，你可以让视图实现<code>UIAccessibilityContainer</code>协议。对于每一个元素，返回一个描述它的<code>UIAccessibilityElement</code>对象。</p>
-
-<h2>本地化</h2>
-
-<p>创建自定义视图时，本地化也同样重要。如辅助功能一样，这个可以作为一整期的话题。本地化自定义视图的最直接工作就是字符串内容。如果使用<code>NSString</code>，你不必担心编码问题。如果在自定义视图中展示日期或数字，使用日期和数字格式化类来展示它们。使用<code>NSLocalizedString</code>本地化字符串。</p>
-
-<p>另一个本地化过程中很有用的工具是Auto Layout。例如，有在英文中很短的词在德语中可能会很长。如果根据英文单词的长度对视图的尺寸做硬编码，那么当翻译成德文的时候几乎一定会遇上麻烦。通过使用Auto Layout，让标签控件自动调整为内容的尺寸，并向依赖元素添加一些其他的限制以确保重新设置尺寸，使这项工作变得非常简单。苹果为此提供了一个很好的<a href="http://developer.apple.com/library/ios/#referencelibrary/GettingStarted/RoadMapiOS/chapters/InternationalizeYourApp/InternationalizeYourApp/InternationalizeYourApp.html">introduction</a>。另外，对于类似希伯来语这种顺序从右到左的语言，如果你使用了leading和trailing属性，整个视图会自动按照从右到左的顺序展示，而不是硬编码的从左至右。</p>
-
-<h2>测试</h2>
-
-<p>最后，让我们考虑测试视图的问题。对于单元测试，你可以使用Xcode自带的工具或者其它第三方框架。另外，可以使用UIAutomation或者其它基于它的工具。为此，你的视图完全支持辅助功能是必要的。UIAutomation并未充分得到利用的一个功能是截图;你可以用它<a href="http://jeffkreeftmeijer.com/2011/comparing-images-and-creating-image-diffs/">自动对比</a>视图和设计以确保两者每一个像素都分毫不差。(另一个无关的功能:你还可以使用它来为应用<a href="http://www.smallte.ch/blog-read_en_29001.html">自动生成截图</a>，这在你有多个多国语言的应用时特别有用)。</p>
 ]]></content>
   </entry>
   
